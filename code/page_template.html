@@ -99,6 +99,33 @@ input[type=search]{font:400 15px/1 var(--mono);background:var(--card);color:var(
 @media (max-width:600px){#lmap{height:440px}}
 .leaflet-container{font:400 12px/1.4 var(--mono);background:var(--panel)}
 .leaflet-image-layer.bv{image-rendering:pixelated;image-rendering:crisp-edges}
+.leaflet-hills-pane{mix-blend-mode:multiply}
+:root[data-theme="dark"] .leaflet-hills-pane{mix-blend-mode:screen}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .leaflet-hills-pane{mix-blend-mode:screen}}
+.lyrBtn{background:var(--card,var(--bg));color:var(--fg);border:1px solid var(--border);border-radius:3px;font:600 12px/1 var(--mono);padding:8px 10px;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.12)}
+.lyrBtn[aria-expanded="true"]{background:var(--fg);color:var(--bg)}
+.lyrPanel{background:var(--card,var(--bg));color:var(--fg);border:1px solid var(--border);border-radius:3px;padding:10px 12px 8px;margin-top:6px;width:240px;box-shadow:0 2px 10px rgba(0,0,0,.15);font:400 12px/1.3 var(--mono)}
+.lyrPanel[hidden]{display:none}
+.lyrPanel .row{margin:0 0 9px}
+.lyrPanel label{display:flex;gap:6px;align-items:center;cursor:pointer;font-weight:600}
+.lyrPanel input[type=range]{width:100%;accent-color:var(--fg)}
+.lyrPanel select{font:400 12px var(--mono);background:var(--bg);color:var(--fg);border:1px solid var(--border);border-radius:2px;padding:2px 4px;width:100%}
+.lyrPanel .sub{display:flex;gap:6px;align-items:center;color:var(--muted);font-size:11px;margin-top:3px}
+.lyrPanel .sub span{flex:0 0 58px}
+.lyrPanel .reset{font:400 11px var(--mono);color:var(--muted);background:none;border:0;padding:0;cursor:pointer;text-decoration:underline}
+.cityL{font:500 11px/1 var(--mono);color:var(--fg);white-space:nowrap;text-shadow:0 0 3px var(--bg),0 0 3px var(--bg),0 0 2px var(--bg);pointer-events:none}
+.cityL i{display:inline-block;width:5px;height:5px;border-radius:50%;background:var(--fg);margin-right:4px;vertical-align:1px}
+.cityL.s{font-size:10px;font-weight:400}
+.cityL.s i{width:4px;height:4px}
+#twinMap{height:340px;border:1px solid var(--border);border-radius:2px;margin:8px 0 4px;background:var(--panel)}
+.tpin{width:22px;height:22px;border-radius:50%;background:var(--hot);color:#fff;font:700 11px/22px var(--mono);text-align:center;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.35)}
+.tpin.out{background:var(--bg);color:var(--fg);border-color:var(--hot)}
+.tpin.me{background:#211C24;width:14px;height:14px;line-height:14px}
+.tpin.hi{transform:scale(1.35)}
+#twins li .no{display:inline-block;width:20px;height:20px;border-radius:50%;background:var(--hot);color:#fff;font:700 10px/20px var(--mono);text-align:center;margin-right:8px}
+#twins li .no.out{background:transparent;color:var(--fg);border:1.5px solid var(--hot);line-height:17px}
+.twinCountries{font:400 12.5px/1.45 var(--mono);color:var(--muted);margin:6px 0 2px}
+.twinCountries b{color:var(--fg)}
 .leaflet-popup-content-wrapper,.leaflet-popup-tip{background:var(--card);color:var(--fg);border-radius:3px;box-shadow:0 2px 10px rgba(0,0,0,.25)}
 .leaflet-bar a,.leaflet-bar a:hover{background:var(--card);color:var(--fg);border-bottom-color:var(--border)}
 .leaflet-control-attribution{background:color-mix(in srgb,var(--card) 85%,transparent)!important;color:var(--muted)}
@@ -267,7 +294,7 @@ footer p{margin:0 0 10px}
 <div class="cta"><a class="p" href="https://doi.org/10.5281/zenodo.23732580">Read the paper</a><a href="https://github.com/Tristan-Hotham/sun-and-rain">Data and code</a><a href="https://blog.tristanhotham.com/2026/10/28/sun-and-rain/">Blog post</a></div>
 
 <details><summary>Sources and licences</summary>
-<p class="src">Climate: CRU CL 2.0, Climatic Research Unit, University of East Anglia, New, M., Lister, D., Hulme, M. and Makin, I. (2002) A high-resolution data set of surface climate over global land areas. Climate Research 21: 1 to 25. No licence is stated with the files; I publish derived grids and aggregates with this citation. Cross-check: WorldClim 2.1, Fick, S.E. and Hijmans, R.J. (2017) WorldClim 2. International Journal of Climatology 37(12): 4302 to 4315 (only summary statistics are published here). Places: GeoNames cities15000 (CC BY 4.0). Country outlines: Natural Earth 1:10m (public domain). Day length: Allen, R.G., Pereira, L.S., Raes, D. and Smith, M. (1998) Crop evapotranspiration, FAO Irrigation and Drainage Paper 56. Base map tiles © Esri, HERE, Garmin, © OpenStreetMap contributors, and the GIS user community.</p>
+<p class="src">Climate: CRU CL 2.0, Climatic Research Unit, University of East Anglia, New, M., Lister, D., Hulme, M. and Makin, I. (2002) A high-resolution data set of surface climate over global land areas. Climate Research 21: 1 to 25. No licence is stated with the files; I publish derived grids and aggregates with this citation. Cross-check: WorldClim 2.1, Fick, S.E. and Hijmans, R.J. (2017) WorldClim 2. International Journal of Climatology 37(12): 4302 to 4315 (only summary statistics are published here). Places: GeoNames cities15000 (CC BY 4.0). Country outlines: Natural Earth 1:10m (public domain). Day length: Allen, R.G., Pereira, L.S., Raes, D. and Smith, M. (1998) Crop evapotranspiration, FAO Irrigation and Drainage Paper 56. Base map, hill shading, shaded relief and satellite tiles © Esri, HERE, Garmin, USGS, NGA, Maxar, Earthstar Geographics, © OpenStreetMap contributors, and the GIS user community.</p>
 </details>
 
 <footer>
@@ -362,21 +389,82 @@ function breaksFor(p, n, mode) {
 
 /* == the map == */
 const map = L.map("lmap", { minZoom: 1, maxZoom: 9, worldCopyJump: false, maxBounds: [[-80, -220], [88, 220]], zoomSnap: .5 }).setView([22, 12], 2);
-let base, labels;
+let base, labels, hills;
+/* map layers: base map, hill shading, the map's own labels, our city names, colour strength */
+const LY = { base: "plain", hills: true, hillK: 45, labels: true, labelK: 100, names: false, nameLvl: 1, colour: 92 };
+const LYDEF = { ...LY };
+try { Object.assign(LY, JSON.parse(localStorage.getItem("sr_world_layers") || "{}")); } catch (e) {}
+const saveLY = () => { try { localStorage.setItem("sr_world_layers", JSON.stringify(LY)); } catch (e) {} };
+const ESRI = "https://server.arcgisonline.com/ArcGIS/rest/services/";
+const ESRI_ATT = 'Tiles &copy; Esri, HERE, Garmin, USGS, NGA, Maxar, Earthstar Geographics, &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, and the GIS user community';
 function setTiles() {
-  if (base) map.removeLayer(base); if (labels) map.removeLayer(labels);
+  [base, labels, hills].forEach(l => { if (l) map.removeLayer(l); });
   const t = isDark() ? "Dark" : "Light";
-  base = L.tileLayer(`https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_${t}_Gray_Base/MapServer/tile/{z}/{y}/{x}`, { maxZoom: 16, attribution: 'Tiles &copy; Esri, HERE, Garmin, &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, and the GIS user community' }).addTo(map);
-  labels = L.tileLayer(`https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_${t}_Gray_Reference/MapServer/tile/{z}/{y}/{x}`, { maxZoom: 16, pane: "labels" }).addTo(map);
+  const url = LY.base === "relief" ? ESRI + "World_Shaded_Relief/MapServer/tile/{z}/{y}/{x}" : LY.base === "satellite" ? ESRI + "World_Imagery/MapServer/tile/{z}/{y}/{x}" : `${ESRI}Canvas/World_${t}_Gray_Base/MapServer/tile/{z}/{y}/{x}`;
+  base = L.tileLayer(url, { maxZoom: 16, maxNativeZoom: LY.base === "relief" ? 13 : 16, attribution: ESRI_ATT }).addTo(map);
+  hills = L.tileLayer(ESRI + "Elevation/World_Hillshade/MapServer/tile/{z}/{y}/{x}", { maxZoom: 16, maxNativeZoom: 16, pane: "hills" });
+  labels = L.tileLayer(`${ESRI}Canvas/World_${t}_Gray_Reference/MapServer/tile/{z}/{y}/{x}`, { maxZoom: 16, pane: "labels" });
+  applyLayers();
 }
+map.createPane("hills"); map.getPane("hills").style.zIndex = 420; map.getPane("hills").style.pointerEvents = "none";
 map.createPane("labels"); map.getPane("labels").style.zIndex = 450; map.getPane("labels").style.pointerEvents = "none";
+let overlay = null, cityL = L.layerGroup();
+function applyLayers() {
+  if (!base) return;
+  if (overlay) overlay.setOpacity(LY.colour / 100);
+  if (LY.hills) { hills.addTo(map); hills.setOpacity(Math.min(1, .1 + LY.hillK / 100)); } else map.removeLayer(hills);
+  if (LY.labels) { labels.addTo(map); labels.setOpacity(LY.labelK / 100); } else map.removeLayer(labels);
+  if (LY.names) cityL.addTo(map); else map.removeLayer(cityL);
+  cityNames();
+}
+function cityNames() {
+  cityL.clearLayers(); if (!LY.names || !CITIES) return;
+  const z = map.getZoom(), bb = map.getBounds().pad(.05);
+  const minPop = [[2, 5e6], [3, 2e6], [4, 8e5], [5, 3e5], [6, 1e5], [7, 4e4], [99, 15000]].find(([zz]) => z < zz + (LY.nameLvl === 2 ? 1.5 : LY.nameLvl === 0 ? -1 : 0))[1] * (LY.nameLvl === 0 ? 2 : 1);
+  const vis = CITIES.filter(c => c.pop >= minPop && bb.contains([c.lat, c.lon])).sort((a, b) => b.pop - a.pop);
+  const boxes = []; let n = 0;
+  for (const c of vis) {
+    const pt = map.latLngToContainerPoint([c.lat, c.lon]), big = c.pop >= 1e6;
+    const bx = [pt.x - 4, pt.y - 8, pt.x + 10 + c.name.length * (big ? 6.9 : 6.3), pt.y + 7];
+    if (boxes.some(o => bx[0] < o[2] && bx[2] > o[0] && bx[1] < o[3] && bx[3] > o[1])) continue;
+    boxes.push(bx); L.marker([c.lat, c.lon], { interactive: false, keyboard: false, icon: L.divIcon({ className: "cityL" + (big ? "" : " s"), html: `<i></i>${esc(c.name)}`, iconSize: null, iconAnchor: [3, 6] }) }).addTo(cityL);
+    if (++n >= 260) break;
+  }
+}
+map.on("zoomend moveend", cityNames);
+(function layerControl() {
+  const Ctl = L.Control.extend({ options: { position: "topright" }, onAdd() {
+    const d = L.DomUtil.create("div"); L.DomEvent.disableClickPropagation(d); L.DomEvent.disableScrollPropagation(d);
+    d.innerHTML = `<button class="lyrBtn" aria-expanded="false" aria-controls="lyrPanel">Map layers</button>
+<div class="lyrPanel" id="lyrPanel" hidden>
+ <div class="row"><label for="lyBase" style="font-weight:600">Base map</label><div class="sub"><select id="lyBase" aria-label="Base map"><option value="plain">Plain grey</option><option value="relief">Shaded relief</option><option value="satellite">Satellite</option></select></div></div>
+ <div class="row"><label><input type="checkbox" id="lyHills"> Hills and mountains</label><div class="sub"><span>strength</span><input type="range" id="lyHillK" min="10" max="100" step="5" aria-label="Hill shading strength"></div></div>
+ <div class="row"><label><input type="checkbox" id="lyLabels"> Map labels and borders</label><div class="sub"><span>strength</span><input type="range" id="lyLabelK" min="20" max="100" step="5" aria-label="Map label strength"></div></div>
+ <div class="row"><label><input type="checkbox" id="lyNames"> Bold city names</label><div class="sub"><span>how many</span><select id="lyNameLvl" aria-label="How many city names"><option value="0">Biggest only</option><option value="1">Some</option><option value="2">Lots</option></select></div></div>
+ <div class="row"><label style="font-weight:600">Colour</label><div class="sub"><span>strength</span><input type="range" id="lyColour" min="25" max="100" step="5" aria-label="Colour strength"></div></div>
+ <button class="reset" id="lyReset">Reset layers</button>
+</div>`;
+    return d; } });
+  map.addControl(new Ctl());
+  const q = id => document.getElementById(id), btn = map.getContainer().querySelector(".lyrBtn"), pan = q("lyrPanel");
+  btn.onclick = () => { const o = pan.hidden; pan.hidden = !o; btn.setAttribute("aria-expanded", o); };
+  const sync = () => { q("lyBase").value = LY.base; q("lyHills").checked = LY.hills; q("lyHillK").value = LY.hillK; q("lyLabels").checked = LY.labels; q("lyLabelK").value = LY.labelK; q("lyNames").checked = LY.names; q("lyNameLvl").value = LY.nameLvl; q("lyColour").value = LY.colour; };
+  const on = (id, ev, f, retile) => q(id).addEventListener(ev, e => { f(e.target); saveLY(); retile ? setTiles() : applyLayers(); });
+  on("lyBase", "change", t => LY.base = t.value, true);
+  on("lyHills", "change", t => LY.hills = t.checked); on("lyHillK", "input", t => { LY.hillK = +t.value; LY.hills = q("lyHills").checked = true; });
+  on("lyLabels", "change", t => LY.labels = t.checked); on("lyLabelK", "input", t => { LY.labelK = +t.value; LY.labels = q("lyLabels").checked = true; });
+  on("lyNames", "change", t => LY.names = t.checked); on("lyNameLvl", "change", t => { LY.nameLvl = +t.value; LY.names = q("lyNames").checked = true; });
+  on("lyColour", "input", t => LY.colour = +t.value);
+  q("lyReset").onclick = () => { Object.assign(LY, LYDEF); saveLY(); sync(); setTiles(); };
+  sync();
+})();
 setTiles();
 const CanvasOverlay = L.ImageOverlay.extend({ _initImage: function () { const e = this._image = this._url; L.DomUtil.addClass(e, "leaflet-image-layer"); L.DomUtil.addClass(e, "bv"); if (this._zoomAnimated) L.DomUtil.addClass(e, "leaflet-zoom-animated"); e.onselectstart = L.Util.falseFn; e.onmousemove = L.Util.falseFn; } });
 const LAT_TOP = 84, LAT_BOT = -60;
 const src = document.createElement("canvas"); src.width = NC; src.height = ROWS;
 const merc = document.createElement("canvas"); const mrows = BV.mercatorRows(NC, LAT_TOP, LAT_BOT, 90, 1 / 6);
 merc.width = NC; merc.height = mrows.length;
-const overlay = new CanvasOverlay(merc, [[LAT_BOT, -180], [LAT_TOP, 180]], { opacity: .92, interactive: false }).addTo(map);
+overlay = new CanvasOverlay(merc, [[LAT_BOT, -180], [LAT_TOP, 180]], { opacity: LY.colour / 100, interactive: false }).addTo(map);
 let marker = null;
 
 function pal() { return BV.palette(S.n); }
@@ -485,7 +573,7 @@ const fold = s => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
 async function loadCities() {
   const j = await (await fetch("data/cities_page.json")).json();
   CITIES = j.rows.map(r => ({ name: r[0], cc: r[1], lat: r[2], lon: r[3], pop: r[4], gc: r[5], sun_h: r[6], rain_mm: r[7], country: j.countries[r[1]] || r[1], f: fold(r[0]) }));
-  CITIES.forEach(c => c.k = G ? G.cellOf[c.gc] : -1);
+  CITIES.forEach(c => c.k = G ? G.cellOf[c.gc] : -1); cityNames();
 }
 const q = document.getElementById("q"), sug = document.getElementById("sug"); let sel = -1, opts = [];
 q.addEventListener("input", () => {
@@ -558,7 +646,7 @@ function drawCard() {
    <div class="controls"><button class="btn" id="twinBtn" aria-pressed="${S.twinsOn}">Show them on the map</button>
    <label class="ctl-l" for="thr">Strictness</label><input type="range" id="thr" min="0.15" max="1.2" step="0.05" value="${S.thr}" aria-label="How similar, lower is stricter"><span class="ctl-l" id="thrV">${S.thr.toFixed(2)}</span>
    <label class="ctl-l"><input type="checkbox" id="flip" ${S.flip ? "checked" : ""}> allow the other hemisphere</label></div>
-   <p class="src" id="twinShare"></p><ol id="twins"></ol></div>`;
+   <p class="src" id="twinShare"></p><div id="twinMap" role="region" aria-label="Map of places with weather like this one"></div><p class="twinCountries" id="twinCountries"></p><ol id="twins"></ol></div>`;
   monthChart(document.getElementById("cardChart"), sun, rain, { aria: "Monthly sunshine and rain for " + c.name });
   document.getElementById("twinBtn").onclick = () => { S.twinsOn = !S.twinsOn; if (S.twinsOn) map.setView([20, 10], 2); document.getElementById("twinBtn").setAttribute("aria-pressed", S.twinsOn); renderMapOnly(); render(); };
   const thr = document.getElementById("thr");
@@ -575,8 +663,43 @@ function twinList() {
   const cand = CITIES.filter(x => x.pop >= 100000 && x.cc !== own && x.k >= 0).map(x => [x, S.dist[x.k]]).sort((a, b) => a[1] - b[1]);
   const seen = new Set(), out = [];
   for (const [x, d] of cand) { if (seen.has(x.cc)) continue; seen.add(x.cc); out.push([x, d]); if (out.length >= 8) break; }
-  ol.innerHTML = out.map(([x, d], k) => `<li data-k="${k}"><span><b>${esc(x.name)}</b>, ${esc(x.country)}</span><span>${d.toFixed(2)}${d > S.thr ? " (outside)" : ""}</span></li>`).join("");
-  [...ol.children].forEach((li, k) => li.onclick = () => { q.value = out[k][0].name; selectPlace(out[k][0], true); });
+  ol.innerHTML = out.map(([x, d], k) => `<li data-k="${k}"><span><i class="no${d > S.thr ? " out" : ""}">${k + 1}</i><b>${esc(x.name)}</b>, ${esc(x.country)}</span><span>${d.toFixed(2)}${d > S.thr ? " (outside)" : ""}</span></li>`).join("");
+  [...ol.children].forEach((li, k) => { li.onclick = () => { q.value = out[k][0].name; selectPlace(out[k][0], true); };
+    li.onmouseenter = () => twinPins[k] && twinPins[k].getElement() && twinPins[k].getElement().firstChild.classList.add("hi");
+    li.onmouseleave = () => twinPins[k] && twinPins[k].getElement() && twinPins[k].getElement().firstChild.classList.remove("hi"); });
+  // which countries hold the most matching towns (all GeoNames places of 15,000 or more)
+  const tally = new Map(); let tot = 0;
+  for (const x of CITIES) if (x.k >= 0 && x.cc !== own && S.dist[x.k] <= S.thr) { tally.set(x.country, (tally.get(x.country) || 0) + 1); tot++; }
+  const top = [...tally].sort((a, b) => b[1] - a[1]).slice(0, 8);
+  document.getElementById("twinCountries").innerHTML = tot ? `Towns of 15,000 or more within ${S.thr.toFixed(2)}, by country (outside ${c.spot ? "this spot's country" : esc(c.country)}): ` + top.map(([n, v]) => `<b>${esc(n)}</b> ${fmt(v)}`).join(", ") + (tally.size > 8 ? `, and ${tally.size - 8} more countries` : "") + "." : `No towns in other countries are within ${S.thr.toFixed(2)}. Loosen the strictness to find some.`;
+  twinMapDraw(c, out);
+}
+
+/* the twins on their own small map: matching land shaded, the listed towns numbered */
+let tmap = null, tbase = null, tmask = null, tpinL = null, twinPins = [];
+const tsrc = document.createElement("canvas"); tsrc.width = NC; tsrc.height = ROWS;
+const tmerc = document.createElement("canvas"); tmerc.width = NC; tmerc.height = mrows.length;
+function twinMapDraw(c, out) {
+  const host = document.getElementById("twinMap"); if (!host) return;
+  if (!tmap || tmap.getContainer() !== host) {
+    if (tmap) tmap.remove();
+    tmap = L.map(host, { minZoom: 0, maxZoom: 8, zoomSnap: .5, scrollWheelZoom: false, worldCopyJump: false, attributionControl: true }).setView([20, 10], 1);
+    tmap.attributionControl.setPrefix(false);
+    tbase = L.tileLayer(`${ESRI}Canvas/World_${isDark() ? "Dark" : "Light"}_Gray_Base/MapServer/tile/{z}/{y}/{x}`, { maxZoom: 16, attribution: "Esri" }).addTo(tmap);
+    L.tileLayer(`${ESRI}Canvas/World_${isDark() ? "Dark" : "Light"}_Gray_Reference/MapServer/tile/{z}/{y}/{x}`, { maxZoom: 16, opacity: .8 }).addTo(tmap);
+    tmask = new CanvasOverlay(tmerc, [[LAT_BOT, -180], [LAT_TOP, 180]], { opacity: .75, interactive: false }).addTo(tmap);
+    tpinL = L.layerGroup().addTo(tmap); tmap.on("click", () => tmap.scrollWheelZoom.enable());
+  }
+  // matching land in the accent colour
+  const x = tsrc.getContext("2d"), im = x.createImageData(NC, ROWS), d = im.data, col = [194, 65, 12];
+  for (let k = 0; k < G.n; k++) if (S.dist[k] <= S.thr) { const p = G.pix[k] * 4; d[p] = col[0]; d[p + 1] = col[1]; d[p + 2] = col[2]; d[p + 3] = 210; }
+  x.putImageData(im, 0, 0); BV.reproject(tsrc, tmerc, mrows);
+  tpinL.clearLayers(); twinPins = [];
+  const me = L.marker([c.lat, c.lon], { keyboard: false, icon: L.divIcon({ className: "", html: '<div class="tpin me"></div>', iconSize: [14, 14], iconAnchor: [7, 7] }) }).bindTooltip(c.spot ? "This spot" : esc(c.name)).addTo(tpinL);
+  const pts = [[c.lat, c.lon]];
+  out.forEach(([t, dd], k) => { const m = L.marker([t.lat, t.lon], { keyboard: false, icon: L.divIcon({ className: "", html: `<div class="tpin${dd > S.thr ? " out" : ""}">${k + 1}</div>`, iconSize: [22, 22], iconAnchor: [11, 11] }) })
+      .bindTooltip(`${k + 1}. ${esc(t.name)}, ${esc(t.country)} (${dd.toFixed(2)})`).on("click", () => { q.value = t.name; selectPlace(t, true); }).addTo(tpinL); twinPins.push(m); pts.push([t.lat, t.lon]); });
+  setTimeout(() => { tmap.invalidateSize(); if (pts.length > 1) tmap.fitBounds(L.latLngBounds(pts).pad(.25), { maxZoom: 4 }); }, 0);
 }
 
 /* == corners == */
