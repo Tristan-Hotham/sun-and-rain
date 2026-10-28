@@ -391,7 +391,7 @@ function breaksFor(p, n, mode) {
 const map = L.map("lmap", { minZoom: 1, maxZoom: 9, worldCopyJump: false, maxBounds: [[-80, -220], [88, 220]], zoomSnap: .5 }).setView([22, 12], 2);
 let base, labels, hills;
 /* map layers: base map, hill shading, the map's own labels, our city names, colour strength */
-const LY = { base: "plain", hills: true, hillK: 45, labels: true, labelK: 100, names: false, nameLvl: 1, colour: 92 };
+const LY = { base: "plain", hills: true, hillK: 75, labels: true, labelK: 100, names: false, nameLvl: 1, colour: 92 };
 const LYDEF = { ...LY };
 try { Object.assign(LY, JSON.parse(localStorage.getItem("sr_world_layers") || "{}")); } catch (e) {}
 const saveLY = () => { try { localStorage.setItem("sr_world_layers", JSON.stringify(LY)); } catch (e) {} };
@@ -412,7 +412,7 @@ let overlay = null, cityL = L.layerGroup();
 function applyLayers() {
   if (!base) return;
   if (overlay) overlay.setOpacity(LY.colour / 100);
-  if (LY.hills) { hills.addTo(map); hills.setOpacity(Math.min(1, .1 + LY.hillK / 100)); } else map.removeLayer(hills);
+  if (LY.hills) { hills.addTo(map); hills.setOpacity(Math.min(1, .25 + LY.hillK / 100)); } else map.removeLayer(hills);
   if (LY.labels) { labels.addTo(map); labels.setOpacity(LY.labelK / 100); } else map.removeLayer(labels);
   if (LY.names) cityL.addTo(map); else map.removeLayer(cityL);
   cityNames();
