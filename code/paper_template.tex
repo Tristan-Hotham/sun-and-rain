@@ -1,0 +1,211 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage{fontspec}
+\setmainfont{TeX Gyre Pagella}
+\newfontfamily\headfont{Inter}[UprightFont=*-ExtraBold,BoldFont=*-ExtraBold,Extension=.otf,Path=/usr/share/fonts/opentype/inter/]
+\usepackage[a4paper,margin=2.3cm]{geometry}
+\usepackage{graphicx,booktabs,float,caption,array,xcolor}
+\usepackage[hidelinks]{hyperref}
+\usepackage{titlesec}
+\usepackage{setspace}
+\setstretch{1.05}
+\renewcommand{\topfraction}{0.9}
+\renewcommand{\bottomfraction}{0.8}
+\renewcommand{\textfraction}{0.1}
+\renewcommand{\floatpagefraction}{0.75}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.55em}
+\titleformat{\section}{\headfont\Large}{\thesection}{0.8em}{}
+\titleformat{\subsection}{\headfont\large}{\thesubsection}{0.8em}{}
+\captionsetup{font=small,labelfont=bf}
+\urlstyle{same}
+\hypersetup{pdftitle={Sun and Rain: The World's Sunshine Against Its Rainfall},pdfauthor={Tristan Hotham}}
+
+\begin{document}
+\begin{center}
+{\Large\bfseries Sun and Rain: The World's Sunshine Against Its Rainfall\\[2pt] A Bivariate Reading of the CRU CL 2.0 Climatology, 1961 to 1990\par}
+\vspace{1.2em}
+{\large Tristan Hotham\par}
+\vspace{0.3em}
+{\small Independent researcher\\
+ORCID: 0000-0003-4931-9349\\
+DOI: \href{https://doi.org/10.5281/zenodo.23732580}{https://doi.org/10.5281/zenodo.23732580}\par}
+\vspace{0.8em}
+2026
+\end{center}
+
+\begin{quote}
+\small
+\begin{center}\textbf{Abstract}\end{center}
+Sunshine and rain are the two things most people mean by the weather, but they are usually mapped one at a time. I combine them in a bivariate map of the world's land, using the CRU CL 2.0 climatology for 1961 to 1990 on a 10 arc-minute grid: {{meta.cells|int}} cells with both mean monthly sunshine, which I convert from a percentage of possible sunshine to hours using the astronomical day length, and mean monthly precipitation. Classed by terciles of land area, the two measures are far from independent (Spearman's $\rho$ = {{corr.spearman|f2}}). The sunny and dry corner holds {{corners_q.sunny_dry|pct1}} of the land and the sunny and wet corner only {{corners_q.sunny_wet|pct1}}, against the {{third|raw}} expected if they were unrelated. The dull and dry corner, {{corners_q.dull_dry|pct1}} of the land, is mostly subarctic, but among {{big.n|int}} cities of a million people or more it contains only Lima, Callao and Trujillo on the desert coast of Peru. The United Kingdom sits at the dull end of the world: its sunniest cell gets {{uk.sunniest.sun|int}} hours a year, and {{uk.land_sunnier_than_uk_max|pct}} of the world's land gets more; only three of {{uk.n_big|int}} countries are duller on average. A comparison with WorldClim 2.1 precipitation shows close agreement for rain (Pearson's r = {{wc.pearson|f3}}), but no independent check is available for sunshine, which rests on far fewer stations. An interactive version lets readers re-cut the classes by month and by break, search {{meta.cities|int}} places, and find each place's closest weather twins.
+
+\textbf{Keywords:} sunshine duration; precipitation; bivariate map; climatology; CRU CL 2.0; WorldClim; climate classification; data visualisation; weather twins; United Kingdom
+\end{quote}
+
+\section{Introduction}
+
+Ask what the weather is like somewhere and the answer usually has two parts: is it sunny, and does it rain? The two are related, since cloud brings rain and blocks sun, but not tightly. Lima, on the coast of Peru, has {{profiles.Lima.rain_mm|int}} mm of rain a year in the data used here and only {{profiles.Lima.sun_h|int}} hours of sunshine, fewer than many cities in northern Europe. Surabaya in Java has {{big.q_sunny_wet.0.rain_mm|int}} mm and {{big.q_sunny_wet.0.sun_h|int}} hours. Maps of either variable alone hide these combinations; a bivariate map, which colours each place by its class on both variables at once (Trumbo 1981), shows them directly.
+
+This note asks four questions. How are sunshine and rain combined across the world's land, and which combinations are common or rare? Where are the unusual corners, the sunny and wet and the dull and dry? Where does the United Kingdom, a country whose weather is a national conversation, sit in the global picture? And how far can a single gridded climatology be trusted for this? The work comes with an interactive page that lets the reader change the period, the number of classes and the class breaks, search a place, and find places whose twelve months of sun and rain look like it.
+
+\section{Data}
+
+\subsection{Climate}
+
+The climate data are the CRU CL 2.0 climatology of New, Lister, Hulme and Makin (2002): mean monthly values for 1961 to 1990 on a 10 arc-minute latitude and longitude grid over global land excluding Antarctica. I use two of its variables. Sunshine (\texttt{sunp}) is the mean percentage of the maximum possible sunshine, that is of day length. Precipitation (\texttt{pre}) is mean monthly precipitation in millimetres. The files hold {{meta.n_sun_rows|int}} cells with sunshine and {{meta.n_pre_rows|int}} with precipitation; {{meta.cells|int}} cells have both, covering {{meta.area_km2|int}} km$^2$ between {{meta.lat_min|f1}} and {{meta.lat_max|f1}} degrees of latitude.
+
+The surfaces were interpolated from station means with thin-plate splines using latitude, longitude and elevation (New et al. 2002). The station networks differ greatly between variables. Precipitation rests on many thousands of gauges; sunshine on far fewer stations, and where sunshine was not observed the authors converted cloud cover to sunshine following New, Hulme and Jones (1999). The tropics and other sparsely observed regions have thin networks, so the sunshine surface is least certain in much of Africa, South America and central Asia, and in the high Arctic. The data files carry no explicit licence; I publish only derived grids and aggregates, with citation.
+
+\subsection{Cross-check}
+
+For an independent check on rain I use WorldClim 2.1 monthly precipitation for 1970 to 2000 at the same 10 arc-minute resolution (Fick and Hijmans 2017). WorldClim is used only for summary statistics and is not redistributed. There is no comparable second global sunshine climatology to hand.
+
+\subsection{Places and countries}
+
+Places are the GeoNames gazetteer of populated places with 15,000 people or more (cities15000; GeoNames 2026). Of {{cities_total|raw}} places, {{meta.cities|int}} lie within three grid cells of a land cell and are given the nearest one (median distance {{meta.city_cell_km_median|f1}} km; 95th percentile {{meta.city_cell_km_p95|f1}} km). GeoNames populations are used for city-weighted summaries; they cover cities and towns of 15,000 or more, and some city districts are listed alongside their city, so these are not population totals. Countries are from the Natural Earth 1:10m admin 0 outlines (Natural Earth 2026), rasterised to the grid by cell centre, with coastal cells that miss every outline given the most common country among their neighbours.
+
+\section{Methods}
+
+\subsection{Sunshine hours}
+
+For each cell and month, hours of sunshine are the CRU percentage divided by 100, times the mean astronomical day length for the month at the cell's latitude, times the number of days in the month (28.25 for February). Day length follows the FAO-56 equations (Allen et al. 1998): solar declination for each day of the year, the sunset hour angle $\omega_s = \arccos(-\tan\varphi \tan\delta)$, and day length $N = 24\omega_s/\pi$, averaged over the days of the month. This counts the sun from rising to setting with no allowance for refraction or for the low sun that sunshine recorders do not register. Because the CRU percentages are themselves relative to day length, the conversion is consistent with their definition, but absolute hours may differ by a few per cent from station records made with a different convention.
+
+\subsection{Classes and colours}
+
+The default classification is three by three, with breaks at the terciles of land area: each break is a weighted quantile of the cells, weighted by cell area on a sphere. With annual values, the sunshine breaks are {{breaks.quant3.sun.0|int}} and {{breaks.quant3.sun.1|int}} hours and the rain breaks {{breaks.quant3.rain.0|int}} and {{breaks.quant3.rain.1|int}} mm. Terciles guarantee that each third of the land falls on each side of each line, so every class can appear; if the two variables were unrelated, each of the nine classes would hold one ninth of the land. As alternatives, the page offers fixed breaks of {{breaks.fixed3.sun.0|int}} and {{breaks.fixed3.sun.1|int}} hours and {{breaks.fixed3.rain.0|int}} and {{breaks.fixed3.rain.1|int}} mm (scaled to the length of a season or month), four by four classes, and breaks the reader drags by hand.
+
+Colours come from four corners: a pale stone for dull and dry, an orange for sunny and dry, a teal for dull and wet, and a dark aubergine for sunny and wet. The other classes are bilinear mixtures of the corners in the OKLab colour space (Ottosson 2020), so the middle row and column step evenly in lightness and hue. The same code builds the palette for the page, the figures and a planned companion map of the United Kingdom.
+
+\subsection{Weather twins}
+
+To find places with similar weather I compare twelve-month profiles. For each month, the difference in sunshine hours is divided by the standard deviation of monthly sunshine across all land cells and months ({{similar.sd_sun|f1}} hours), and the difference in the square root of monthly rain by the corresponding standard deviation ({{similar.sd_rootrain|f2}}). The distance is the root mean square of these 24 standardised differences. The square root damps the very large monsoon totals. An optional flip also compares each place with the other's profile shifted by six months, so that a southern summer can match a northern one, and the smaller distance is used. On the page the default limit for a twin is {{similar.default_threshold|f1}}.
+
+\subsection{Summaries}
+
+Shares of land are area-weighted. Shares of people use GeoNames populations of the matched places. Country values are area-weighted means over the cells assigned to the country; country rankings use the {{uk.n_big|int}} countries with at least 20,000 km$^2$ of land in the grid. For the timing of the sunniest month, the local summer half-year is April to September north of the equator and October to March south of it.
+
+On the page the monthly grids are stored as images, sunshine to the nearest two hours a month and rain on a square-root scale. The largest error this adds to a cell's yearly total is {{encoding.sun_max_err_year|f1}} hours of sunshine and {{encoding.rain_max_err_year|f1}} mm of rain (median relative error for rain {{encoding.rain_med_rel_err_year|pct1}}). All numbers in this note are computed from the unrounded values.
+
+\section{Results}
+
+\subsection{The world's sunshine and rain}
+
+Annual sunshine on land ranges from {{extremes.dullest.sun|int}} hours, in a cell of the South Sandwich Islands in the Southern Ocean, to {{extremes.sunniest.sun|int}} hours in the Nubian Desert of northern Sudan. The area-weighted median is {{sun.median|int}} hours, and the middle 80\% of land lies between {{sun.p10|int}} and {{sun.p90|int}} hours. Annual rain ranges from nothing to {{extremes.wettest.rain|int}} mm in a cell of the Khasi Hills of Meghalaya in north-east India; the median is {{rain.median|int}} mm, and {{rain.dry_area_share_lt50|pct1}} of land gets less than 50 mm a year.
+
+Figure~\ref{fig:map} shows the three by three classes for the whole year. The orange of the sunny and dry corner runs across the Sahara, Arabia, Iran, the deserts of central Asia, the south-west of North America and inland Australia. Teal for dull and wet covers the Amazon and Congo basins, southern China, eastern Canada and north-west Europe. The darkest class, sunny and wet, is thin: it appears in the savannas and highlands of eastern and southern Africa, on the southern edge of the Sahel, in northern Australia and in parts of inland Brazil and India, places with a short, heavy rainy season in an otherwise bright year. The palest class, dull and dry, covers the far north of Canada, Alaska and Siberia.
+
+\begin{figure}[tbp]\centering
+\includegraphics[width=\textwidth]{f_map.png}
+\caption{Annual sunshine against annual rain, 1961 to 1990, three by three classes with breaks at terciles of land area ({{breaks.quant3.sun.0|int}} and {{breaks.quant3.sun.1|int}} hours; {{breaks.quant3.rain.0|int}} and {{breaks.quant3.rain.1|int}} mm). Plate carr\'ee projection, 60 degrees south to 84 degrees north. Data: CRU CL 2.0.}\label{fig:map}
+\end{figure}
+
+\subsection{Four corners and a middle}
+
+Table~\ref{tab:matrix} gives the share of land and of city people in each class. The two variables are negatively related across cells (Spearman's $\rho$ = {{corr.spearman|f2}}): sunny places tend to be dry and dull places wet. As a result the classes are far from equal. The sunny and dry corner holds {{corners_q.sunny_dry|pct1}} of the land, nearly twice the one ninth expected under independence, while sunny and wet holds only {{corners_q.sunny_wet|pct1}} and dull and dry {{corners_q.dull_dry|pct1}}. The middle class holds {{corners_q.middle|pct1}}.
+
+People are distributed quite differently from land. Only {{corners_q_pop.sunny_dry|pct1}} of the people in the matched places live in the sunny and dry corner, while {{corners_q_pop.dull_wet|pct1}} live in the dull and wet one, which includes much of southern China and cities such as Kolkata. The dull and dry corner is almost empty of people ({{corners_q_pop.dull_dry|pct1}}): it is mostly subarctic. Among the {{big.n|int}} places of a million people or more, it contains only three, Lima, Callao and Trujillo, all on the coast of Peru, where a cold ocean current gives low cloud and fog but almost no rain. The sunny and wet corner holds {{big.n_q_sunny_wet|raw}} such cities, led by Surabaya ({{big.q_sunny_wet.0.sun_h|int}} hours, {{big.q_sunny_wet.0.rain_mm|int}} mm), Antalya and Cape Town (Figure~\ref{fig:scatter}).
+
+{{TABLE_MATRIX}}
+
+\begin{figure}[tbp]\centering
+\includegraphics[width=0.95\textwidth]{f_scatter.png}
+\caption{The {{big.n|int}} GeoNames places with a million people or more, by annual sunshine and rain (log scale), over the tercile classes of Figure~\ref{fig:map}. Dot area is proportional to population; UK cities are ringed. GeoNames lists some districts separately, so a few points repeat their city's cell.}\label{fig:scatter}
+\end{figure}
+
+\subsection{Sunniest and dullest places}
+
+The sunniest of the big cities is {{big.sunniest.0.name}} ({{big.sunniest.0.sun_h|int}} hours), followed by the cities of the Sonoran Desert, Arabia, Iraq and Sudan (Table~\ref{tab:cities}). The dullest is {{big.dullest.0.name}} in Ecuador ({{big.dullest.0.sun_h|int}} hours), then six cities of Sichuan, Chongqing and Guizhou in south-west China, a region known for persistent low cloud. The next dullest is {{big.dullest.7.name}} in England, with {{big.dullest.7.sun_h|int}} hours. The wettest big city in the grid is {{big.wettest.0.name}} in Indonesia ({{big.wettest.0.rain_mm|int}} mm) and the driest {{big.driest.0.name}} in Peru ({{big.driest.0.rain_mm|int}} mm).
+
+By country, the sunniest are {{countries.sunniest.0.country}} ({{countries.sunniest.0.sun_h|int}} hours on average), {{countries.sunniest.1.country}} and {{countries.sunniest.2.country}}; the dullest are {{countries.dullest.0.country}} ({{countries.dullest.0.sun_h|int}} hours), {{countries.dullest.1.country}}, {{countries.dullest.2.country}} and the {{countries.dullest.3.country}}.
+
+{{TABLE_CITIES}}
+
+\subsection{Where the United Kingdom sits}
+
+The UK's land averages {{uk.sun_mean|int}} hours of sunshine and {{uk.rain_mean|int}} mm of rain a year in this data. Its sunniest cell, on the Sussex coast near Bognor Regis, has {{uk.sunniest.sun|int}} hours; {{uk.land_sunnier_than_uk_max|pct1}} of the world's land has more. Its dullest, in the western Highlands, has {{uk.dullest.sun|int}} hours. Every UK cell falls in the dullest tercile of world land. Among {{uk.n_big|int}} countries, the UK ranks {{uk.sun_rank|int}} for sunshine and {{uk.rain_rank|int}} for rain (Figure~\ref{fig:uk}).
+
+London has {{london.sun|int}} hours and {{london.rain|int}} mm. Only {{london.big_duller|int}} of the {{big.n|int}} big cities are duller, but {{london.big_wetter|int}} are wetter. Of the people in the matched places, {{people.share_sunnier_than_london|pct}} live somewhere sunnier than London and {{people.share_wetter_than_london|pct}} somewhere wetter. The UK is rainy in the sense that rain falls often and lightly under cloud; in total, outside the western hills (where one cell near Loch Lomond reaches {{uk.wettest.rain|int}} mm), it is not unusually wet. What sets it apart in a global view is the lack of sunshine. Among UK places of 150,000 people or more the sunniest is {{uk.sunniest_city.name}} ({{uk.sunniest_city.sun_h|int}} hours) and the dullest {{uk.dullest_city.name}} ({{uk.dullest_city.sun_h|int}} hours).
+
+Among places of 300,000 people or more, London's closest weather twins outside the UK, with the flip allowed, are {{similar.examples.London.twins.0.name}} ({{similar.examples.London.twins.0.d|f2}}), {{similar.examples.London.twins.1.name}} ({{similar.examples.London.twins.1.d|f2}}) and {{similar.examples.London.twins.2.name}} ({{similar.examples.London.twins.2.d|f2}}); {{similar.examples.London.share_land|pct1}} of the world's land lies within the default limit. Lima has no twin within the limit outside Peru: its nearest, {{similar.examples.Lima.twins.0.name}} in {{similar.examples.Lima.twins.0.country}}, is {{similar.examples.Lima.twins.0.d|f2}} away. Mumbai's monsoon profile is similarly unmatched outside India (nearest {{similar.examples.Mumbai.twins.0.name}}, {{similar.examples.Mumbai.twins.0.d|f2}}).
+
+\begin{figure}[tbp]\centering
+\includegraphics[width=\textwidth]{f_uk.png}
+\caption{Share of world land by annual sunshine (bars, coloured by tercile) with UK places of 150,000 people or more (thin lines). The dashed line is the world median, {{sun.median|int}} hours.}\label{fig:uk}
+\end{figure}
+
+\subsection{Seasons}
+
+Annual totals hide the calendar (Figure~\ref{fig:profiles}). London's sunshine follows the day length, peaking at {{london.sun_month.5|int}} hours in June. In Mumbai the monsoon inverts this: July has {{season.mumbai_jul_rain|int}} mm of rain and {{season.mumbai_jul_sun|int}} hours of sunshine, while May, before the rains, has {{season.mumbai_max_sun|int}}. Lima is dull in its winter, from June to September, under the coastal fog, and almost rainless all year. Over the tropics the sunniest month falls outside the local summer half-year on {{season.peak_outside_summer_tropics|pct}} of the land; outside the tropics on only {{season.peak_outside_summer_extra|pct1}}. On {{season.wettest_is_dullest|pct}} of all land the wettest month is also the dullest. Figure~\ref{fig:seasons} shows the classes for December to February and June to August, each with its own terciles: the monsoon moves the dull and wet class across south Asia and the Sahel in the northern summer, and the southern continents darken towards sunny and wet in their summer.
+
+\begin{figure}[tbp]\centering
+\includegraphics[width=0.95\textwidth]{f_profiles.png}
+\caption{Mean monthly sunshine (line, hours, left scale) and rain (bars, mm, right scale), 1961 to 1990, at the grid cells of four cities.}\label{fig:profiles}
+\end{figure}
+
+\begin{figure}[tbp]\centering
+\includegraphics[width=0.95\textwidth]{f_seasons.png}
+\caption{Three by three classes for two seasons, each with breaks at its own terciles of land area. Colours as in Figure~\ref{fig:map}.}\label{fig:seasons}
+\end{figure}
+
+\subsection{Checking the rain}
+
+Across {{wc.cells|int}} cells present in both, CRU CL 2.0 and WorldClim 2.1 annual precipitation agree closely (Figure~\ref{fig:wc}): Pearson's r = {{wc.pearson|f3}} and Spearman's $\rho$ = {{wc.spearman|f3}}. The median cell differs by {{wc.median_absdiff|f1}} mm a year, or {{wc.median_rel_absdiff|pct1}} of the CRU value, and the area-weighted means are {{wc.mean_cru|int}} and {{wc.mean_wc|int}} mm. Classed with the same tercile breaks, the rain class agrees on {{wc.same_tercile|pct1}} of the land. The two products differ in period (1961 to 1990 against 1970 to 2000), station selection and method, so this is a check on robustness, not on accuracy.
+
+\begin{figure}[tbp]\centering
+\includegraphics[width=0.62\textwidth]{f_wc.png}
+\caption{Annual precipitation in CRU CL 2.0 (1961 to 1990) against WorldClim 2.1 (1970 to 2000), {{wc.cells|int}} cells, both on log scales. The line marks equality.}\label{fig:wc}
+\end{figure}
+
+\section{Discussion}
+
+The map makes a familiar point visible: sun and rain are partly two sides of one coin, cloud, so the world's land is crowded into the sunny and dry and the dull and wet corners. What is less familiar is how the remaining corners fill. Sunny and wet climates are those where rain is concentrated in a short season, monsoon or winter, and the rest of the year is bright: the tropical savannas, the edges of the monsoon and a few Mediterranean-type coasts. Dull and dry climates are of two kinds: the cold north, where long winter nights and stable cold air keep both low, and the cold-current coasts, of which Peru's is the inhabited example. The Namib coast, which shares the cold current mechanism, does not appear in the dull and dry class at this resolution, a reminder that 10 arc-minute cells smooth narrow coastal belts.
+
+For the UK the result is clear and probably unsurprising to its residents: Britain is among the dullest inhabited places on Earth, but not among the wettest. The reputation for rain reflects frequency and grey skies more than totals, which a sunshine and rain map can show and a rainfall map alone cannot.
+
+The interactive version matters for interpretation. Class breaks are a choice, and terciles of land area emphasise contrasts across the whole of the land, much of which is empty desert and tundra. Fixed breaks or the reader's own lines can change which places look unusual. Letting the reader move the lines, and see the share of land in each class update, makes that choice visible rather than hidden.
+
+\section{Limitations}
+
+First, sunshine is the weaker variable. It rests on far fewer stations than rain, and was filled from cloud cover where sunshine was not observed (New et al. 2002; New, Hulme and Jones 1999). In data-sparse regions, single cells should be read as indicative only. I could check rain against an independent product but not sunshine.
+
+Second, 1961 to 1990 is a past climate. Surface sunshine has changed since in many regions, for example with changes in air pollution (Wild 2009), and rainfall patterns have shifted too. The map describes the reference period, not today.
+
+Third, the grid smooths. A 10 arc-minute cell is about 18 km across at the equator; valleys, coasts, sea breezes and mountain rain shadows are blurred, and coastal cities can pick up a cell a few kilometres inland.
+
+Fourth, the conversion to hours uses astronomical day length, which is a few per cent longer than the time a recorder can register the sun. This affects absolute hours slightly but not the ranks or classes.
+
+Fifth, annual totals say nothing about intensity, temperature or humidity. Weather twins match monthly sun and rain only, so a twin may be much hotter or colder.
+
+Finally, city-weighted shares use GeoNames populations for places of 15,000 or more, with some districts listed alongside their cities; they describe the people in those places, not the world's population.
+
+\section{Conclusion}
+
+Set against each other, sunshine and rain sort the world's land into a crowded sunny and dry corner, a populous dull and wet corner, a thin band of sunny and wet savanna, and a cold, nearly empty dull and dry corner with one desert coast. The United Kingdom lies firmly at the dull end, sunnier than only a handful of countries, while its rain is middling. An interactive bivariate map, with breaks the reader can move, is a simple way to see both measures at once and to find the places that share a town's weather.
+
+\section*{Data and code availability}
+
+Data and code: \url{https://github.com/Tristan-Hotham/sun-and-rain}. Interactive version: \url{https://tristan-hotham.github.io/sun-and-rain/}. Archived release: \url{https://doi.org/10.5281/zenodo.23732580}. The repository holds the derived monthly grids (as images, with their encoding documented), half-degree annual values, country and city tables and every number used here in \texttt{results.json}. Text, figures and derived data are released under CC BY 4.0 and the code under the MIT licence. CRU CL 2.0 has no stated licence; derived products are shared with citation. WorldClim data are not redistributed.
+
+\section*{AI statement}
+
+I wrote the text, with drafting and editing assistance from Claude (Anthropic), which also helped prepare the analysis code. I reviewed and checked all text and results.
+
+\section*{References}
+\small
+Allen, R.G., Pereira, L.S., Raes, D. and Smith, M. (1998) \emph{Crop Evapotranspiration: Guidelines for Computing Crop Water Requirements}. FAO Irrigation and Drainage Paper 56. Rome: Food and Agriculture Organization of the United Nations.
+
+Fick, S.E. and Hijmans, R.J. (2017) WorldClim 2: new 1 km spatial resolution climate surfaces for global land areas. \emph{International Journal of Climatology} 37(12): 4302 to 4315. \url{https://www.worldclim.org}
+
+GeoNames (2026) cities15000: all cities with a population of 15,000 or more. CC BY 4.0. \url{https://download.geonames.org/export/dump/} (retrieved 28 October 2026).
+
+Natural Earth (2026) 1:10m Cultural Vectors: Admin 0 countries. Public domain. \url{https://www.naturalearthdata.com}
+
+New, M., Hulme, M. and Jones, P. (1999) Representing twentieth-century space and time climate variability. Part I: Development of a 1961 to 90 mean monthly terrestrial climatology. \emph{Journal of Climate} 12: 829 to 856.
+
+New, M., Lister, D., Hulme, M. and Makin, I. (2002) A high-resolution data set of surface climate over global land areas. \emph{Climate Research} 21: 1 to 25. Data: Climatic Research Unit, University of East Anglia, \url{https://crudata.uea.ac.uk/cru/data/hrg/tmc/}
+
+Ottosson, B. (2020) A perceptual color space for image processing. \url{https://bottosson.github.io/posts/oklab/}
+
+Trumbo, B.E. (1981) A theory for coloring bivariate statistical maps. \emph{The American Statistician} 35(4): 220 to 226.
+
+Wild, M. (2009) Global dimming and brightening: a review. \emph{Journal of Geophysical Research} 114: D00D16.
+\end{document}

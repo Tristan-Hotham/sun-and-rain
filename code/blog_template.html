@@ -1,0 +1,138 @@
+<!-- wp:paragraph -->
+<p><em>Is your town sunny or rainy? Those are two different questions, and putting them on one map splits the world into four corners: sunny and dry, sunny and wet, dull and dry, dull and wet. Here is where everywhere sits, where Britain sits, and which faraway places share your weather.</em></p>
+<!-- /wp:paragraph -->
+
+<!-- wp:buttons -->
+<div class="wp-block-buttons"><!-- wp:button -->
+<div class="wp-block-button"><a class="wp-block-button__link wp-element-button" href="https://tristan-hotham.github.io/sun-and-rain/">Explore the interactive version</a></div>
+<!-- /wp:button -->
+<!-- wp:button -->
+<div class="wp-block-button"><a class="wp-block-button__link wp-element-button" href="https://doi.org/10.5281/zenodo.23732580">Read the paper</a></div>
+<!-- /wp:button --></div>
+<!-- /wp:buttons -->
+
+<!-- wp:paragraph -->
+<p>British weather talk runs on two things: did the sun come out, and did it rain? We tend to treat them as one, as if a grey day and a wet day were the same. They are not. Lima, the capital of Peru, gets {{profiles.Lima.rain_mm|int}} mm of rain in an average year, less than London gets in a fortnight, and yet it is one of the gloomiest big cities on Earth. Surabaya in Java is drenched by the monsoon, {{big.q_sunny_wet.0.rain_mm|int}} mm a year, and still gets {{big.q_sunny_wet.0.sun_h|int}} hours of sunshine, more than Madrid.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:paragraph -->
+<p>So I put the two on one map. The data is the Climatic Research Unit's global climatology for 1961 to 1990, which gives every patch of land outside Antarctica, in {{meta.cells|int}} cells about 18 km across, an average month of sunshine and of rain. I turned its sunshine figures into hours, then coloured each cell by which third of the world's land it falls in for sun and which third for rain. Nine colours; four corners and a middle.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:image {"sizeSlug":"full"} -->
+<figure class="wp-block-image size-full">{{IMG|b_map.png|World map with every land cell coloured by a three by three key of sunshine against rain: orange for sunny and dry across the Sahara, Arabia, central Asia, the American south-west and inland Australia; teal for dull and wet over the Amazon, Congo, southern China and north-west Europe; pale stone for dull and dry across the Arctic; dark aubergine for sunny and wet in patches of African savanna and northern Australia.|Sunshine against rain, 1961 to 1990 averages. Each third of the world's land falls on each side of each line. Data: CRU CL 2.0.}}</figure>
+<!-- /wp:image -->
+
+<!-- wp:heading -->
+<h2 class="wp-block-heading">Four corners, not equally full</h2>
+<!-- /wp:heading -->
+
+<!-- wp:paragraph -->
+<p>If sun and rain had nothing to do with each other, each of the nine colours would cover a ninth of the land, about 11%. They do not, because the same thing, cloud, brings rain and blocks sun. The orange sunny and dry corner covers {{corners_q.sunny_dry|pct}} of the world's land: the great deserts and their edges. The dark sunny and wet corner covers just {{corners_q.sunny_wet|pct1}}. It turns up where the rain comes all at once in a short season and the rest of the year is bright: the savannas and highlands of Africa, northern Australia, parts of Brazil and India, and among big cities Surabaya, Antalya, Cape Town and Havana.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:paragraph -->
+<p>The dull and dry corner, {{corners_q.dull_dry|pct1}} of the land, is the oddest. Most of it is the far north of Canada, Alaska and Siberia, where long winter nights and cold air keep both sun and rain low. Hardly anyone lives there: only {{corners_q_pop.dull_dry|pct1}} of the people in the {{meta.cities|int}} towns and cities I matched. Of the {{big.n|int}} places with a million people or more, just three are dull and dry, and all three are on the desert coast of Peru: Lima, Callao and Trujillo, where a cold ocean makes low cloud and fog but almost no rain.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:image {"sizeSlug":"full"} -->
+<figure class="wp-block-image size-full">{{IMG|b_scatter.png|Scatter chart of {{big.n|int}} big cities by annual sunshine hours and annual rain on a log scale, over the nine shaded classes. Phoenix and Cairo sit in the sunny dry corner, Chongqing and Guayaquil in the dull wet corner, Lima alone at the bottom left, Surabaya in the sunny wet corner, London ringed near the dull end.|Every city of a million people or more, by sunshine and rain. Rain is on a log scale; UK cities are ringed.}}</figure>
+<!-- /wp:image -->
+
+<!-- wp:heading -->
+<h2 class="wp-block-heading">Britain: not that wet, very dull</h2>
+<!-- /wp:heading -->
+
+<!-- wp:paragraph -->
+<p>Now for home. The UK's land averages {{uk.sun_mean|int}} hours of sunshine a year in this data. Of the {{uk.n_big|int}} countries with at least 20,000 km² of land, only {{countries.dullest.0.country}}, {{countries.dullest.1.country}} and {{countries.dullest.2.country}} are duller. The sunniest cell in the whole country, on the Sussex coast near Bognor Regis, gets {{uk.sunniest.sun|int}} hours, and {{uk.land_sunnier_than_uk_max|pct}} of the world's land gets more than that. Every last cell of the UK is in the dullest third of the world.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:paragraph -->
+<p>Rain is another matter. London gets {{london.rain|int}} mm a year, which makes it drier than {{london.big_wetter|int}} of the {{big.n|int}} big cities. Our rain is frequent, light and grey, not heavy. Only the western hills are truly wet: one cell near Loch Lomond reaches {{uk.wettest.rain|int}} mm. The thing that really marks us out is the missing sun. Of the people counted in my towns and cities, {{people.share_sunnier_than_london|pct}} live somewhere sunnier than London. And Birmingham, with {{big.dullest.7.sun_h|int}} hours, is the dullest big city in the world outside Guayaquil in Ecuador and the fog-bound cities of south-west China.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:image {"sizeSlug":"full"} -->
+<figure class="wp-block-image size-full">{{IMG|b_uk.png|Histogram of the world's land by annual sunshine hours, coloured pale, light orange and orange by tercile, with thin purple lines for UK cities clustered between {{uk.dullest_city.sun_h|int}} and {{uk.sunniest_city.sun_h|int}} hours, all well left of the world median of {{sun.median|int}} hours.|The world's land by hours of sunshine a year. Thin lines: UK places of 150,000 people or more.}}</figure>
+<!-- /wp:image -->
+
+<!-- wp:pullquote -->
+<figure class="wp-block-pullquote"><blockquote><p>{{people.share_sunnier_than_london|pct}} of the people in the world's towns and cities live somewhere sunnier than London.</p></blockquote></figure>
+<!-- /wp:pullquote -->
+
+<!-- wp:heading -->
+<h2 class="wp-block-heading">When the sun and rain arrive</h2>
+<!-- /wp:heading -->
+
+<!-- wp:paragraph -->
+<p>Annual totals hide the calendar, and the calendar is where it gets interesting. London's sunshine simply follows the length of the day, peaking at {{london.sun_month.5|int}} hours in June. In Mumbai the monsoon flips it: May has {{season.mumbai_max_sun|int}} hours of sun, July has {{season.mumbai_jul_sun|int}} hours and {{season.mumbai_jul_rain|int}} mm of rain. Lima is dull from June to September, under its winter fog, and dry all year. Across the tropics the sunniest month falls outside the local summer on {{season.peak_outside_summer_tropics|pct}} of the land.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:image {"sizeSlug":"full"} -->
+<figure class="wp-block-image size-full">{{IMG|b_profiles.png|Four small charts of monthly sunshine as an orange line and rain as teal bars: London with a gentle summer sunshine peak and small even rain; Mumbai with high sun until May then a crash in sunshine and huge rain bars from June to September; Lima with sunshine falling in mid-year and almost no rain; Singapore with steady sun and steady heavy rain.|Twelve months of sunshine (line, hours) and rain (bars, mm) in four cities, 1961 to 1990.}}</figure>
+<!-- /wp:image -->
+
+<!-- wp:paragraph -->
+<p>On the interactive page you can switch the map to any season or month and watch the monsoon march north into south Asia and the Sahel in the northern summer, while the southern continents turn sunny and wet in theirs.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:image {"sizeSlug":"full"} -->
+<figure class="wp-block-image size-full">{{IMG|b_seasons.png|Two world maps in the same nine colours, for December to February and June to August, each classed by its own thirds of land. In the northern summer, teal dull and wet spreads across India, south-east Asia and the Sahel; in the southern summer, Australia, southern Africa and southern Brazil turn dark sunny and wet.|December to February (top) and June to August (bottom), each cut into its own thirds.}}</figure>
+<!-- /wp:image -->
+
+<!-- wp:heading -->
+<h2 class="wp-block-heading">Find your weather twin</h2>
+<!-- /wp:heading -->
+
+<!-- wp:paragraph -->
+<p>The part I have enjoyed most is the twin finder. Pick a town and the page compares its twelve months of sun and rain with every cell on Earth, lights up the places that match, and lists the closest big towns abroad. Among places of 300,000 people or more, London's nearest twins are {{similar.examples.London.twins.0.name}}, {{similar.examples.London.twins.1.name}} and {{similar.examples.London.twins.2.name}}, which will surprise no one who has been there. Tick a box and it will also match places whose seasons are six months out, so a southern summer can stand in for a northern one. Some places have no twin at all: Lima's nearest match outside Peru is a long way off, and so is Mumbai's.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:paragraph -->
+<p>You can also drag the lines between the classes, switch to round-number breaks, or try a four by four key. Class breaks are a choice, and moving them is the quickest way to see how much a map like this depends on it.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:heading -->
+<h2 class="wp-block-heading">How I did this</h2>
+<!-- /wp:heading -->
+
+<!-- wp:paragraph -->
+<p>The climate data is CRU CL 2.0 (New and colleagues, 2002): average monthly sunshine, as a percentage of the possible daylight, and average monthly rain for 1961 to 1990 on a grid of 10 arc-minutes. I converted sunshine to hours with the astronomical length of the day at each latitude in each month (the FAO-56 formula). The breaks are thirds of land area, weighted by the size of each cell. Places are the GeoNames list of towns and cities with 15,000 people or more, each given the nearest land cell. For rain I checked against a second climatology, WorldClim 2.1 for 1970 to 2000: the two agree closely (correlation {{wc.pearson|f3}}), and the rain third is the same on {{wc.same_tercile|pct}} of the land.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:paragraph -->
+<p>The big caveat is sunshine. It was measured at far fewer stations than rain, and where it was missing the authors converted cloud cover into sunshine. In much of Africa, South America, central Asia and the Arctic the map is interpolating across wide gaps, and I had no second sunshine dataset to check it against. It is also a past climate: sunshine and rain have both shifted since 1990. Read single cells as indicative and the big patterns as the story.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:buttons -->
+<div class="wp-block-buttons"><!-- wp:button -->
+<div class="wp-block-button"><a class="wp-block-button__link wp-element-button" href="https://tristan-hotham.github.io/sun-and-rain/">Explore the interactive version</a></div>
+<!-- /wp:button -->
+<!-- wp:button -->
+<div class="wp-block-button"><a class="wp-block-button__link wp-element-button" href="https://doi.org/10.5281/zenodo.23732580">Read the paper</a></div>
+<!-- /wp:button -->
+<!-- wp:button -->
+<div class="wp-block-button"><a class="wp-block-button__link wp-element-button" href="https://github.com/Tristan-Hotham/sun-and-rain">Data and code</a></div>
+<!-- /wp:button --></div>
+<!-- /wp:buttons -->
+
+<!-- wp:heading {"level":3} -->
+<h3 class="wp-block-heading">Notes and sources</h3>
+<!-- /wp:heading -->
+
+<!-- wp:list -->
+<ul class="wp-block-list"><!-- wp:list-item -->
+<li>Climate: <a href="https://crudata.uea.ac.uk/cru/data/hrg/tmc/">CRU CL 2.0</a>, Climatic Research Unit, University of East Anglia; New, M., Lister, D., Hulme, M. and Makin, I. (2002) A high-resolution data set of surface climate over global land areas, Climate Research 21: 1 to 25. No licence is stated with the files; I share derived grids and summaries with this citation.</li>
+<!-- /wp:list-item -->
+<!-- wp:list-item -->
+<li>Rain cross-check: <a href="https://www.worldclim.org">WorldClim 2.1</a>; Fick, S.E. and Hijmans, R.J. (2017) WorldClim 2, International Journal of Climatology 37(12): 4302 to 4315. Only summary statistics are published.</li>
+<!-- /wp:list-item -->
+<!-- wp:list-item -->
+<li>Places: <a href="https://download.geonames.org/export/dump/">GeoNames cities15000</a> (CC BY 4.0). Country outlines: <a href="https://www.naturalearthdata.com">Natural Earth</a> (public domain). Day length: FAO Irrigation and Drainage Paper 56 (Allen and colleagues, 1998).</li>
+<!-- /wp:list-item -->
+<!-- wp:list-item -->
+<li>Text, figures and derived data are CC BY 4.0; the code is MIT. A companion map of the UK at 1 km is on its way.</li>
+<!-- /wp:list-item -->
+<!-- wp:list-item -->
+<li>I wrote the text, with drafting and editing assistance from Claude (Anthropic), which also helped prepare the analysis code. I reviewed and checked all text and results.</li>
+<!-- /wp:list-item --></ul>
+<!-- /wp:list -->

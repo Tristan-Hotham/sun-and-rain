@@ -1,0 +1,692 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Sun and Rain</title>
+<meta name="description" content="A bivariate world map of annual sunshine against annual rainfall, 1961 to 1990, that you can re-cut by month and class breaks, with a city search and a places-like-this finder.">
+<meta property="og:title" content="Sun and rain: the world's sunshine against its rainfall">
+<meta property="og:description" content="{{meta.cells|int}} land cells, {{meta.cities|int}} cities. Sunny and dry, sunny and wet, dull and dry, dull and wet: find where your town sits and which places share its weather.">
+<meta property="og:image" content="https://tristan-hotham.github.io/sun-and-rain/header.png">
+<meta property="og:url" content="https://tristan-hotham.github.io/sun-and-rain/">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,800;9..144,900&family=IBM+Plex+Mono:wght@400;500&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&display=swap">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<style>
+/* Warm paper. The four corner colours of the bivariate palette (see code/bivariate.js) drive the accents. */
+:root{
+  --bg:#F7F3EC; --panel:#EEE8DD; --fg:#211C24; --muted:#6A6270; --rule:#DED6C9; --card:#FCFAF6; --border:#CDC3B3;
+  --hot:#C9661C; --cool:#2E8F8C; --deep:#3B1D47; --pale:#EDE8DF;
+  --display:"Fraunces",Georgia,"Times New Roman",serif;
+  --body:"Source Serif 4",Georgia,"Times New Roman",serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#17141A; --panel:#221E25; --fg:#EFEAE4; --muted:#A79FAB; --rule:#38323C; --card:#211D24; --border:#4A4350;
+  --hot:#F0974F; --cool:#5CC0BB; --deep:#C9A6D8; --pale:#3A3540; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#17141A; --panel:#221E25; --fg:#EFEAE4; --muted:#A79FAB; --rule:#38323C; --card:#211D24; --border:#4A4350;
+  --hot:#F0974F; --cool:#5CC0BB; --deep:#C9A6D8; --pale:#3A3540; color-scheme:dark}
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--fg);font:400 18px/1.62 var(--body);
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));overflow-x:hidden}
+.wrap{max-width:680px;margin:0 auto;padding-block:28px 64px}
+.wrap .bleed{width:min(1120px,calc(100vw - 32px));margin-left:calc((100% - min(1120px,100vw - 32px))/2);margin-right:0}
+a{color:inherit;text-decoration-color:var(--hot);text-underline-offset:3px}
+.kicker{font:500 12px/1 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--muted);display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.kicker b{background:var(--deep);color:#fff;padding:5px 8px;font-weight:500}
+:root[data-theme="dark"] .kicker b{color:#17141A}
+header.hero{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px 24px;align-items:end;border-bottom:6px double var(--fg);padding-bottom:22px;margin-top:18px}
+h1{font:900 clamp(46px,12vw,100px)/.88 var(--display);letter-spacing:-.02em;margin:0;text-wrap:balance;font-variation-settings:"SOFT" 50}
+h1 .s{color:var(--hot)} h1 .r{color:var(--cool)}
+.mark{width:clamp(78px,17vw,132px);height:auto;display:block}
+.dek{grid-column:1/-1;font-size:21px;line-height:1.42;margin:8px 0 0;max-width:48ch}
+.byline{font:400 13px/1.4 var(--mono);color:var(--muted);margin-top:14px}
+h2{font:800 34px/1.04 var(--display);letter-spacing:-.01em;margin:52px 0 10px;text-wrap:balance}
+h2 .n{font:500 13px/1 var(--mono);color:var(--hot);display:block;letter-spacing:.1em;margin-bottom:10px}
+h3{font:600 20px/1.25 var(--display);margin:28px 0 6px}
+p{margin:0 0 16px}
+.lede::first-letter{font:900 72px/.8 var(--display);float:left;margin:6px 10px 0 0;color:var(--hot)}
+.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1px;background:var(--rule);border:1px solid var(--rule);margin:26px 0 8px}
+.stats div{background:var(--card);padding:14px 12px}
+.stats b{display:block;font:900 clamp(22px,4.4vw,32px)/1 var(--display);color:var(--fg);letter-spacing:-.01em}
+.stats b.h{color:var(--hot)} .stats b.c{color:var(--cool)}
+.stats span{font:400 12px/1.35 var(--mono);color:var(--muted);display:block;margin-top:6px}
+@media (max-width:600px){.stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.figure{margin:26px 0 30px}
+.fig-h{font:600 19px/1.25 var(--display);margin:0 0 4px}
+.fig-sub{font:400 13px/1.45 var(--mono);color:var(--muted);margin:0 0 12px}
+.src{font:400 12px/1.45 var(--mono);color:var(--muted);margin-top:10px}
+.chart{width:100%;position:relative}
+.chart svg{display:block;width:100%;height:auto;overflow:visible}
+svg text{font-family:var(--mono);fill:var(--fg)}
+.lab{font-size:12px}.lab.m{fill:var(--muted)}.lab.b{font-weight:500}.lab.s{font-size:11px}
+.tip{position:absolute;pointer-events:none;background:var(--fg);color:var(--bg);font:400 12px/1.45 var(--mono);padding:8px 10px;border-radius:3px;max-width:280px;z-index:1000;transform:translate(-50%,calc(-100% - 12px));display:none}
+.tip b{font-weight:500}
+.tip i{display:inline-block;width:10px;height:10px;margin-right:5px;vertical-align:-1px;border:1px solid rgba(255,255,255,.5)}
+.controls{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:0 0 10px}
+.ctl-l{font:500 11px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-right:2px}
+.btn{font:500 12px/1 var(--mono);background:var(--card);color:var(--fg);border:1px solid var(--border);border-radius:3px;padding:8px 10px;cursor:pointer;min-height:36px}
+.btn[aria-pressed="true"]{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+.btn:focus-visible,input:focus-visible,summary:focus-visible,select:focus-visible,.hdl:focus-visible,.bvcell:focus-visible{outline:2px solid var(--hot);outline-offset:2px}
+.seg{display:inline-flex;border:1px solid var(--border);border-radius:3px;overflow:hidden;max-width:100%;flex-wrap:wrap}
+.seg .btn{border:0;border-radius:0;border-right:1px solid var(--border)}
+.seg .btn:last-child{border-right:0}
+select{font:500 12px/1 var(--mono);background:var(--card);color:var(--fg);border:1px solid var(--border);border-radius:3px;padding:8px 6px;min-height:36px}
+.searchbox{position:relative;flex:1 1 240px;min-width:0}
+input[type=search]{font:400 15px/1 var(--mono);background:var(--card);color:var(--fg);border:1px solid var(--border);border-radius:3px;padding:10px 11px;min-height:40px;width:100%}
+.suggest{position:absolute;left:0;right:0;top:100%;margin:2px 0 0;padding:0;list-style:none;background:var(--card);border:1px solid var(--border);z-index:1001;font:400 13px/1.3 var(--mono);display:none;max-height:340px;overflow:auto}
+.suggest li{padding:8px 10px;cursor:pointer;border-bottom:1px solid var(--rule)}
+.suggest li span{color:var(--muted)}
+.suggest li[aria-selected="true"],.suggest li:hover{background:var(--panel)}
+.mapgrid{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:14px;align-items:start}
+@media (max-width:900px){.mapgrid{grid-template-columns:1fr}}
+.side{background:var(--card);border:1px solid var(--border);padding:12px 12px 10px;font:400 13px/1.45 var(--mono)}
+.side h4{font:500 11px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:12px 0 8px}
+.side h4:first-child{margin-top:2px}
+#legend svg{display:block;max-width:100%;height:auto}
+#legendNote{min-height:38px;color:var(--muted);font-size:12px}
+#legendNote b{color:var(--fg);font-weight:500}
+.bslider{display:block;width:100%;height:auto;touch-action:none;overflow:visible}
+.slwrap{margin:2px 0 8px}
+.bvvals{font:400 11.5px/1.3 var(--mono);color:var(--fg);margin-top:2px}
+.slwrap .t{font:500 12px/1.2 var(--mono);display:flex;justify-content:space-between;gap:8px}
+.slwrap .t span{color:var(--muted);font-weight:400}
+#lmap{height:600px;border:1px solid var(--border);background:var(--panel);border-radius:2px}
+@media (max-width:600px){#lmap{height:440px}}
+.leaflet-container{font:400 12px/1.4 var(--mono);background:var(--panel)}
+.leaflet-image-layer.bv{image-rendering:pixelated;image-rendering:crisp-edges}
+.leaflet-popup-content-wrapper,.leaflet-popup-tip{background:var(--card);color:var(--fg);border-radius:3px;box-shadow:0 2px 10px rgba(0,0,0,.25)}
+.leaflet-bar a,.leaflet-bar a:hover{background:var(--card);color:var(--fg);border-bottom-color:var(--border)}
+.leaflet-control-attribution{background:color-mix(in srgb,var(--card) 85%,transparent)!important;color:var(--muted)}
+.leaflet-control-attribution a{color:var(--fg)}
+.loading{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font:500 13px/1.4 var(--mono);color:var(--muted);background:color-mix(in srgb,var(--panel) 80%,transparent);z-index:900;pointer-events:none}
+.mapbox{position:relative}
+.finder{background:var(--card);border:1px solid var(--border);border-top:6px solid var(--hot);padding:16px 16px 12px;margin:20px 0 14px}
+#card .big{font:800 clamp(22px,4.6vw,30px)/1.15 var(--display);margin:8px 0 4px;text-wrap:balance}
+#card .sub{font:400 13px/1.45 var(--mono);color:var(--muted);margin:0 0 10px}
+#card .nums{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1px;background:var(--rule);border:1px solid var(--rule);margin:8px 0 12px}
+#card .nums div{background:var(--bg);padding:10px}
+#card .nums b{display:block;font:800 24px/1 var(--display)}
+#card .nums span{display:block;font:400 11.5px/1.35 var(--mono);color:var(--muted);margin-top:4px}
+@media (max-width:520px){#card .nums{grid-template-columns:1fr 1fr}}
+.chip{display:inline-flex;align-items:center;gap:6px;font:500 12px/1 var(--mono);padding:6px 9px;border-radius:999px;border:1px solid var(--border);background:var(--bg)}
+.chip i{width:12px;height:12px;border-radius:2px;display:inline-block}
+.twin{margin-top:14px;border-top:1px solid var(--rule);padding-top:10px}
+.twin .controls{margin:6px 0}
+.twin input[type=range]{width:160px;accent-color:var(--hot)}
+#twins{list-style:none;margin:6px 0;padding:0;font:400 13px/1.35 var(--mono)}
+#twins li{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;padding:6px 0;border-bottom:1px solid var(--rule);cursor:pointer}
+#twins li span{color:var(--muted)}
+#twins li:hover{background:var(--panel)}
+.pull{font:600 26px/1.25 var(--display);border-left:6px solid var(--hot);padding:4px 0 4px 18px;margin:30px 0}
+.note{background:var(--panel);border:1px solid var(--rule);padding:14px 16px;font-size:16px;margin:22px 0}
+.note h3{margin-top:0}
+table.t{width:100%;border-collapse:collapse;font:400 13px/1.35 var(--mono)}
+table.t th{text-align:left;font-weight:500;color:var(--muted);border-bottom:2px solid var(--fg);padding:6px 8px 6px 0}
+table.t td{border-bottom:1px solid var(--rule);padding:7px 8px 7px 0;vertical-align:top}
+table.t td.num,table.t th.num{text-align:right;white-space:nowrap}
+table.t td small{color:var(--muted);display:block}
+table.t tr.go{cursor:pointer}
+table.t tr.go:hover td{background:var(--panel)}
+table.t i.sw{display:inline-block;width:11px;height:11px;border-radius:2px;margin-right:6px;vertical-align:-1px}
+.tablewrap{overflow-x:auto}
+@media (max-width:600px){table.t .wide{display:none}}
+.cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:20px 0}
+@media (max-width:600px){.cards{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--border);border-left:8px solid var(--hot);padding:12px 14px;font:400 13px/1.5 var(--mono)}
+.card b{font:600 19px/1.2 var(--display);display:block;margin-bottom:2px}
+.card .big{font:900 30px/1.05 var(--display);margin:6px 0 2px}
+.card .big span{color:var(--muted);font:400 13px/1 var(--mono)}
+.card a{cursor:pointer}
+.multiples{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+@media (max-width:700px){.multiples{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.multiples .m h5{font:600 16px/1.2 var(--display);margin:0}
+.multiples .m p{font:400 11.5px/1.3 var(--mono);color:var(--muted);margin:2px 0 4px}
+.legend{display:flex;gap:6px 14px;flex-wrap:wrap;font:400 12px/1.3 var(--mono);color:var(--muted);margin-top:8px}
+.legend i{display:inline-block;width:14px;height:3px;margin-right:6px;vertical-align:3px}
+.legend i.bar{height:11px;width:11px;vertical-align:-1px}
+details{margin:14px 0}
+summary{font:500 13px/1.4 var(--mono);cursor:pointer;color:var(--fg);padding:8px 0}
+.cta{display:flex;gap:10px;flex-wrap:wrap;margin:18px 0}
+.cta a{font:500 13px/1 var(--mono);text-decoration:none;border:1px solid var(--fg);padding:11px 14px;border-radius:3px}
+.cta a.p{background:var(--hot);border-color:var(--hot);color:#fff}
+footer{border-top:6px double var(--fg);margin-top:56px;padding-top:16px;font:400 13px/1.55 var(--mono);color:var(--muted)}
+footer p{margin:0 0 10px}
+.theme{position:fixed;right:12px;bottom:12px;z-index:1002}
+@media print{.theme,.controls{display:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<div class="kicker"><b>Data study</b><span>Climate</span><span>World, 1961 to 1990 normals</span></div>
+<header class="hero">
+  <h1><span class="s">Sun</span> and <span class="r">rain</span></h1>
+  <svg class="mark" viewBox="0 0 132 132" aria-hidden="true"><g id="heroMark"></g></svg>
+  <p class="dek">Some places are sunny and dry, some dull and wet. A few manage to be sunny and wet, and a strange handful are dull and dry. This is the world's sunshine set against its rainfall, cell by cell, on a map you can re-cut by month and by where you draw the lines. Where does your town sit, and which places share its weather?</p>
+</header>
+<div class="byline">Dr Tristan Hotham, Independent researcher · October 2026 · Data: CRU CL 2.0 (New et al. 2002); WorldClim 2.1 cross-check; GeoNames; Natural Earth</div>
+
+<div class="stats">
+  <div><b>{{meta.cells|int}}</b><span>land cells of 10 arc-minutes (about 18 km) with both sunshine and rain</span></div>
+  <div><b class="h">{{extremes.sunniest.sun|int}}</b><span>hours of sunshine a year in the sunniest cell, northern Sudan</span></div>
+  <div><b class="c">{{corners_q.sunny_wet|pct1}}</b><span>of land is in both the sunniest and the wettest third</span></div>
+  <div><b>{{uk.land_sunnier_than_uk_max|pct}}</b><span>of the world's land is sunnier than the sunniest spot in the UK</span></div>
+</div>
+
+<p class="lede">Ask anyone in Britain about the weather and you will hear about two things: whether the sun came out, and whether it rained. They are not the same question. Lima, on the coast of Peru, gets less rain in a year than London gets in a fortnight, yet it is one of the dullest big cities on Earth. Surabaya in Java is soaked by the monsoon and still sunnier than Madrid. Put the two measures together on one map and the world falls into four corners and a middle.</p>
+<p>I took the Climatic Research Unit's 10-minute climatology for 1961 to 1990 (CRU CL 2.0), which gives every land cell outside Antarctica a monthly average for sunshine and for rainfall. Sunshine comes as a percentage of the possible daylight, which I converted to hours using the length of the day at each latitude in each month. Then I coloured every cell by two things at once: which third of the world's land it falls in for sunshine, and which third for rain. Nine classes, four corners. Drag the lines, pick a month, and the map redraws.</p>
+
+<h2><span class="n">01 · The map</span>Sunshine against rain, everywhere</h2>
+<p>Each cell is coloured by its class. By default the breaks are terciles of land area, so each third of the land falls on each side of each line, and every class shows up. Switch to fixed breaks for round numbers, or drag the handles under the legend. Hover over (or tap) a legend square to see only those cells. Hover over the map to read a cell; click to open it below.</p>
+<div class="bleed">
+<div class="controls" role="group" aria-label="Map controls">
+  <span class="ctl-l">When</span>
+  <div class="seg" id="perSeg"><button class="btn" data-p="year" aria-pressed="true">Year</button><button class="btn" data-p="DJF">Dec to Feb</button><button class="btn" data-p="MAM">Mar to May</button><button class="btn" data-p="JJA">Jun to Aug</button><button class="btn" data-p="SON">Sep to Nov</button></div>
+  <select id="monthSel" aria-label="Pick a month"><option value="">or a month</option></select>
+  <span class="ctl-l">Classes</span>
+  <div class="seg" id="nSeg"><button class="btn" data-n="3" aria-pressed="true">3 × 3</button><button class="btn" data-n="4">4 × 4</button></div>
+  <span class="ctl-l">Breaks</span>
+  <div class="seg" id="modeSeg"><button class="btn" data-m="quant" aria-pressed="true">Equal land</button><button class="btn" data-m="fixed">Fixed</button><button class="btn" data-m="custom" disabled>Yours</button></div>
+</div>
+<div class="mapgrid">
+  <div class="mapbox"><div id="lmap" role="application" aria-label="Bivariate map of sunshine and rain"></div><div class="loading" id="loading">Loading the climate grids…</div></div>
+  <div class="side">
+    <h4 id="perTitle">Whole year</h4>
+    <div id="legend"></div>
+    <div id="legendNote">Hover over a square to isolate a class; click to pin it.</div>
+    <h4>Sunshine breaks</h4>
+    <div class="slwrap"><div class="t">Hours of sunshine <span id="sunUnit"></span></div><div id="sunSlider"></div></div>
+    <h4>Rain breaks</h4>
+    <div class="slwrap"><div class="t">Millimetres of rain <span id="rainUnit"></span></div><div id="rainSlider"></div></div>
+    <div class="src" id="shareNote"></div>
+  </div>
+</div>
+<p class="src">Sunshine: CRU CL 2.0 percentage of possible sunshine, converted to hours with the astronomical day length. Rain: CRU CL 2.0 precipitation. Both are 1961 to 1990 averages on a 10 arc-minute grid of land (no Antarctica). Shares are of land area. Base map tiles © Esri.</p>
+</div>
+
+<h2><span class="n">02 · Your place</span>Find a town, and its weather twins</h2>
+<p>Search any of the {{meta.cities|int}} places in GeoNames with 15,000 people or more, or click anywhere on the map. You get its year of sunshine and rain, month by month, where it falls in the world, and the places whose twelve months look most like it. Weather twins can be on the other side of the equator: tick the box to let a southern summer match a northern one.</p>
+<div class="finder">
+  <div class="controls">
+    <div class="searchbox"><input type="search" id="q" placeholder="Search a city or town, e.g. Leeds, Lima, Perth" autocomplete="off" aria-label="Search a place" aria-autocomplete="list" aria-controls="sug"><ul class="suggest" id="sug" role="listbox"></ul></div>
+  </div>
+  <div id="card"><p class="sub">Loading the place list…</p></div>
+</div>
+
+<h2><span class="n">03 · Four corners</span>Sunny and dry, sunny and wet, dull and dry, dull and wet</h2>
+<p>If sunshine and rain had nothing to do with each other, each of the nine tercile classes would hold a ninth of the land, about 11%. They do not. Sunny places tend to be dry and dull places wet (Spearman's rank correlation across cells is {{corr.spearman|f2}}), so the sunny and dry corner holds {{corners_q.sunny_dry|pct}} of the world's land and the sunny and wet corner only {{corners_q.sunny_wet|pct1}}. Click a city to open it.</p>
+<div class="cards" id="corners"></div>
+<div class="figure bleed">
+  <p class="fig-h">The world's big cities by sunshine and rain</p>
+  <p class="fig-sub">{{big.n|int}} places in GeoNames with a million people or more, on the classes currently set on the map (whole year). UK cities are ringed. Rain is on a log scale.</p>
+  <div class="chart" id="scatter"></div>
+</div>
+
+<h2><span class="n">04 · Where the UK sits</span>Near the dull end of the world</h2>
+<p>The UK's land averages {{uk.sun_mean|int}} hours of sunshine and {{uk.rain_mean|int}} mm of rain a year in this data. Among the {{uk.n_big|int}} countries with at least 20,000 km² of land in the grid, only {{countries.dullest.0.country}}, {{countries.dullest.1.country}} and {{countries.dullest.2.country}} are duller. The sunniest UK cell, on the Sussex coast near Bognor Regis, gets {{uk.sunniest.sun|int}} hours, and {{uk.land_sunnier_than_uk_max|pct}} of the world's land gets more. Every bit of the UK is in the dullest third of the world's land.</p>
+<p>Rain is a different story. At {{london.rain|int}} mm a year, London is drier than {{london.big_wetter|int}} of the {{big.n|int}} big cities. The UK is wet in the sense that it rains often, lightly, under cloud; it is not wet in total, except in the western hills, where one cell near Loch Lomond reaches {{uk.wettest.rain|int}} mm. What really sets Britain apart is the lack of sun: of the people counted in the {{meta.cities|int}} places of this study, {{people.share_sunnier_than_london|pct}} live somewhere sunnier than London.</p>
+<div class="figure">
+  <p class="fig-h">UK cities on the world's sunshine scale</p>
+  <p class="fig-sub">Bars: share of the world's land by annual sunshine hours. Ticks: UK places of 150,000 people or more.</p>
+  <div class="chart" id="ukstrip"></div>
+</div>
+
+<h2><span class="n">05 · Rankings</span>Sunniest, dullest, wettest, driest</h2>
+<p>The sunniest big city in the grid is {{big.sunniest.0.name}} ({{big.sunniest.0.sun_h|int}} hours), with the cities of the Sonoran Desert, Arabia, Iraq and Sudan close behind. The dullest is {{big.dullest.0.name}} in {{big.dullest.0.country}} ({{big.dullest.0.sun_h|int}} hours), then six cities of Sichuan, Chongqing and Guizhou in south-west China, a region known for low cloud. Next comes {{big.dullest.7.name}}, in the English Midlands, with {{big.dullest.7.sun_h|int}} hours. Click a row to open the city.</p>
+<div class="controls" id="rankSeg"><div class="seg"><button class="btn" data-k="sunniest" aria-pressed="true">Sunniest</button><button class="btn" data-k="dullest">Dullest</button><button class="btn" data-k="wettest">Wettest</button><button class="btn" data-k="driest">Driest</button></div><div class="seg"><button class="btn" data-g="cities" aria-pressed="true">Big cities</button><button class="btn" data-g="countries">Countries</button></div></div>
+<div class="tablewrap"><table class="t" id="rank"></table></div>
+<p class="src">Big cities: GeoNames places with a million people or more ({{big.n|int}}). GeoNames lists some districts of large cities separately, so a few names repeat a city's weather. Countries: area-weighted means over cells inside Natural Earth outlines, countries with 20,000 km² of land or more.</p>
+
+<h2><span class="n">06 · Seasons</span>When the sun and the rain arrive</h2>
+<p>Annual totals hide the calendar. In London the sun follows the length of the day, peaking at {{london.sun_month.5|int}} hours in June. In Mumbai the monsoon turns that upside down: July brings {{season.mumbai_jul_rain|int}} mm of rain and only {{season.mumbai_jul_sun|int}} hours of sun, while May, before the rains, has {{season.mumbai_max_sun|int}}. Across the tropics the sunniest month falls outside the local summer half of the year on {{season.peak_outside_summer_tropics|pct}} of the land; outside the tropics it does so on only {{season.peak_outside_summer_extra|pct}}. Use the month menu above the map to watch the monsoon move.</p>
+<div class="figure">
+  <p class="fig-h">Twelve months of sun and rain in six cities</p>
+  <div class="legend"><span><i style="background:var(--hot)"></i>sunshine, hours (left scale)</span><span><i class="bar" style="background:var(--cool);opacity:.7"></i>rain, mm (right scale)</span></div>
+  <div class="multiples" id="multiples"></div>
+</div>
+
+<h2><span class="n">07 · Checking</span>How far to trust the grid</h2>
+<p>The rain in CRU CL 2.0 rests on many thousands of gauges; the sunshine on far fewer stations, and where sunshine was not recorded the authors converted cloud cover to sunshine (New et al. 2002). In much of Africa, South America, central Asia and the high Arctic, the sunshine surface is interpolated across wide gaps, and the 10-minute cells smooth mountains and coasts. So read single cells as indicative, and patterns as the story.</p>
+<p>For rain I could check. WorldClim 2.1 is a separate climatology for 1970 to 2000 built with different methods. Across {{wc.cells|int}} shared cells the two agree closely (Pearson's r = {{wc.pearson|f3}}); the median cell differs by {{wc.median_absdiff|int}} mm a year, about {{wc.median_rel_absdiff|pct}}, and the rain tercile is the same on {{wc.same_tercile|pct}} of the land. There is no second sunshine grid on hand to compare, which is the main weakness of the map.</p>
+
+<div class="note">
+<h3>Method and caveats</h3>
+<p><b>Data.</b> CRU CL 2.0 (New, Lister, Hulme and Makin 2002): mean monthly sunshine as a percentage of the maximum possible, and mean monthly precipitation, 1961 to 1990, on a 10 arc-minute grid over land outside Antarctica ({{meta.cells|int}} cells with both). The station network behind them is uneven and sunshine is the thinner of the two.</p>
+<p><b>Sunshine hours.</b> Hours = percentage ÷ 100 × astronomical day length × days in the month. Day length is the FAO-56 formula (Allen et al. 1998) for each day, averaged over the month, at each cell's latitude. It counts the sun from rising to setting, so it is a little longer than the time a sunshine recorder can register; CRU's percentages are relative to day length, so the conversion follows their definition.</p>
+<p><b>Classes.</b> Equal land breaks are weighted quantiles of the cells, weighted by cell area, recomputed for whichever period you choose. Fixed breaks are {{breaks.fixed3.sun.0|int}} and {{breaks.fixed3.sun.1|int}} hours and {{breaks.fixed3.rain.0|int}} and {{breaks.fixed3.rain.1|int}} mm a year (3 × 3), scaled by the length of a season or month. The colours come from four corners mixed in the OKLab colour space.</p>
+<p><b>Places.</b> GeoNames cities of 15,000 people or more ({{meta.cities|int}} matched), each given the nearest land cell (median {{meta.city_cell_km_median|f1}} km away). Coastal and island cities can pick up a cell a few kilometres inland. "People" means the GeoNames populations of these places, not everyone; GeoNames lists some city districts alongside their city, so a few people are counted twice.</p>
+<p><b>Weather twins.</b> For each month, the difference in sunshine hours and in the square root of rain, each divided by its spread across all land and months ({{similar.sd_sun|int}} hours; {{similar.sd_rootrain|f1}} root-mm), then the root mean square over twelve months. A score of 0 is identical; the default limit is {{similar.default_threshold|f1}}. The flip option also compares each place with the other's months shifted by six.</p>
+<p><b>On the page.</b> The monthly grids are stored as images, sunshine to the nearest 2 hours a month and rain on a square-root scale. The largest error this adds to a cell's yearly total is {{encoding.sun_max_err_year|int}} hours of sun and {{encoding.rain_max_err_year|int}} mm of rain, so the map's class edges can differ from exact values by a whisker. City totals in the cards and tables are exact.</p>
+<p><b>Not covered.</b> 1961 to 1990 is a past climate; sunshine has changed since in places (for example with cleaner air in Europe). There is no temperature, humidity or rain intensity here. Ten-minute cells are about 18 km across at the equator: no valleys, no sea breezes.</p>
+</div>
+
+<div class="cta"><a class="p" href="https://doi.org/10.5281/zenodo.23732580">Read the paper</a><a href="https://github.com/Tristan-Hotham/sun-and-rain">Data and code</a><a href="https://blog.tristanhotham.com/2026/10/28/sun-and-rain/">Blog post</a></div>
+
+<details><summary>Sources and licences</summary>
+<p class="src">Climate: CRU CL 2.0, Climatic Research Unit, University of East Anglia, New, M., Lister, D., Hulme, M. and Makin, I. (2002) A high-resolution data set of surface climate over global land areas. Climate Research 21: 1 to 25. No licence is stated with the files; I publish derived grids and aggregates with this citation. Cross-check: WorldClim 2.1, Fick, S.E. and Hijmans, R.J. (2017) WorldClim 2. International Journal of Climatology 37(12): 4302 to 4315 (only summary statistics are published here). Places: GeoNames cities15000 (CC BY 4.0). Country outlines: Natural Earth 1:10m (public domain). Day length: Allen, R.G., Pereira, L.S., Raes, D. and Smith, M. (1998) Crop evapotranspiration, FAO Irrigation and Drainage Paper 56. Base map tiles © Esri, HERE, Garmin, © OpenStreetMap contributors, and the GIS user community.</p>
+</details>
+
+<footer>
+  <p>Dr Tristan Hotham, Independent researcher. ORCID 0000-0003-4931-9349. Cite as: Hotham, T. (2026) Sun and rain: the world's sunshine against its rainfall. https://doi.org/10.5281/zenodo.23732580</p>
+  <p>I wrote the text, with drafting and editing assistance from Claude (Anthropic), which also helped prepare the analysis code. I reviewed and checked all text and results.</p>
+  <p>Text and figures: CC BY 4.0. Code: MIT. Derived data: CC BY 4.0, with the credits above. Other studies: <a href="https://tristan-hotham.github.io/pleasant-months/">Pleasant months</a>, <a href="https://tristan-hotham.github.io/postbox-kings/">Postbox kings</a>, <a href="https://blog.tristanhotham.com/">all posts</a>.</p>
+</footer>
+</div>
+<div class="tip" id="tip"></div>
+<button class="btn theme" id="theme" aria-label="Toggle dark mode">◐</button>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+/*BVJS*/
+</script>
+<script>
+const R = /*RESULTS*/;
+const el = BV.el;
+const fmt = n => n == null ? "n/a" : Math.round(n).toLocaleString("en-GB");
+const pc = (x, d = 0) => (x * 100).toFixed(d) + "%";
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const tip = document.getElementById("tip");
+function showTip(h, x, y) { tip.innerHTML = h; tip.style.display = "block"; const w = tip.offsetWidth; x = Math.max(w / 2 + 8, Math.min(innerWidth - w / 2 - 8, x)); tip.style.left = x + scrollX + "px"; tip.style.top = y + scrollY + "px"; }
+function hideTip() { tip.style.display = "none"; }
+document.addEventListener("click", hideTip);
+const redraws = [];
+function resp(box, render) { let last = 0; const go = force => { const w = Math.max(280, Math.round(box.clientWidth)); if (!force && Math.abs(w - last) < 4) return; last = w; box.innerHTML = ""; render(w, w < 560); }; new ResizeObserver(() => go()).observe(box); go(); redraws.push(() => go(true)); }
+const lbl = (svg, x, y, s, cls = "lab", anchor = "start") => { const t = el("text", { x, y, class: cls, "text-anchor": anchor }, svg); t.textContent = s; return t; };
+const isDark = () => { const r = document.documentElement; return r.dataset.theme ? r.dataset.theme === "dark" : matchMedia("(prefers-color-scheme: dark)").matches; };
+const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const MON = R.months, DAYS = [31, 28.25, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+const PERIODS = { year: [0,1,2,3,4,5,6,7,8,9,10,11], DJF: [11,0,1], MAM: [2,3,4], JJA: [5,6,7], SON: [8,9,10] };
+MON.forEach((m, k) => PERIODS["m" + k] = [k]);
+const PNAME = { year: "Whole year", DJF: "December to February", MAM: "March to May", JJA: "June to August", SON: "September to November" };
+const MONLONG = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+MONLONG.forEach((m, k) => PNAME["m" + k] = m);
+const NC = 2160, ROWS = 900;
+const S = { period: "year", n: 3, mode: "quant", custom: null, only: null, place: null, dist: null, twinsOn: false, thr: R.similar.default_threshold, flip: true };
+let G = null;      // grid: {n, pix, w, sun, rain, cellOf}
+let CITIES = null; // place list
+const cache = {};
+
+/* hero mark: the 3 x 3 palette */
+(function () {
+  const P = BV.palette(3), g = document.getElementById("heroMark");
+  for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) el("rect", { x: 2 + i * 43, y: 2 + (2 - j) * 43, width: 41, height: 41, fill: P[i][j].hex, rx: 2 }, g);
+})();
+
+/* == load the grids (8 PNGs: 3 months each in R, G, B) == */
+function loadImg(src) { return new Promise((ok, bad) => { const im = new Image(); im.onload = () => ok(im); im.onerror = bad; im.src = src; }); }
+async function loadGrid() {
+  const names = []; for (const v of ["sun", "rain"]) for (let q = 1; q <= 4; q++) names.push(`data/${v}_q${q}.png`);
+  const imgs = await Promise.all(names.map(loadImg));
+  const cv = document.createElement("canvas"); cv.width = NC; cv.height = ROWS;
+  const ctx = cv.getContext("2d", { willReadFrequently: true });
+  const read = im => { ctx.clearRect(0, 0, NC, ROWS); ctx.drawImage(im, 0, 0); return ctx.getImageData(0, 0, NC, ROWS).data; };
+  let d = read(imgs[0]); let n = 0;
+  for (let p = 0; p < NC * ROWS; p++) if (d[p * 4] > 0) n++;
+  const pix = new Int32Array(n), w = new Float32Array(n), cellOf = new Int32Array(NC * ROWS).fill(-1);
+  let k = 0;
+  for (let p = 0; p < NC * ROWS; p++) if (d[p * 4] > 0) { pix[k] = p; cellOf[p] = k; const lat = 90 - (Math.floor(p / NC) + .5) / 6; w[k] = Math.cos(lat * Math.PI / 180); k++; }
+  const sun = new Float32Array(n * 12), rain = new Float32Array(n * 12);
+  for (let q = 0; q < 8; q++) {
+    if (q) d = read(imgs[q]);
+    const arr = q < 4 ? sun : rain, m0 = (q % 4) * 3;
+    for (let c = 0; c < n; c++) {
+      const o = pix[c] * 4;
+      for (let t = 0; t < 3; t++) {
+        const code = d[o + t];
+        arr[c * 12 + m0 + t] = q < 4 ? (code - 1) * 2 : Math.pow((code - 1) / 5, 2);
+      }
+    }
+  }
+  G = { n, pix, w, sun, rain, cellOf };
+}
+function periodVals(p) {
+  if (cache[p]) return cache[p];
+  const ms = PERIODS[p], a = new Float32Array(G.n), b = new Float32Array(G.n);
+  for (let c = 0; c < G.n; c++) { let s = 0, r = 0; for (const m of ms) { s += G.sun[c * 12 + m]; r += G.rain[c * 12 + m]; } a[c] = s; b[c] = r; }
+  return (cache[p] = { a, b });
+}
+const frac = p => PERIODS[p].reduce((s, m) => s + DAYS[m], 0) / 365.25;
+function breaksFor(p, n, mode) {
+  if (mode === "custom" && S.custom && S.custom.n === n) { const f = frac(p) / frac(S.custom.p); return { sun: S.custom.sun.map(x => x * f), rain: S.custom.rain.map(x => x * f) }; }
+  if (mode === "fixed") { const f = frac(p), F = R.breaks["fixed" + n]; return { sun: F.sun.map(x => x * f), rain: F.rain.map(x => x * f) }; }
+  const key = "q" + p + n;
+  if (!cache[key]) {
+    const v = periodVals(p);
+    cache[key] = { sun: BV.quantileBreaks(v.a, G.w, n), rain: BV.quantileBreaks(v.b, G.w, n, Math.sqrt).map(x => x * x) };
+  }
+  return cache[key];
+}
+
+/* == the map == */
+const map = L.map("lmap", { minZoom: 1, maxZoom: 9, worldCopyJump: false, maxBounds: [[-80, -220], [88, 220]], zoomSnap: .5 }).setView([22, 12], 2);
+let base, labels;
+function setTiles() {
+  if (base) map.removeLayer(base); if (labels) map.removeLayer(labels);
+  const t = isDark() ? "Dark" : "Light";
+  base = L.tileLayer(`https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_${t}_Gray_Base/MapServer/tile/{z}/{y}/{x}`, { maxZoom: 16, attribution: 'Tiles &copy; Esri, HERE, Garmin, &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, and the GIS user community' }).addTo(map);
+  labels = L.tileLayer(`https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_${t}_Gray_Reference/MapServer/tile/{z}/{y}/{x}`, { maxZoom: 16, pane: "labels" }).addTo(map);
+}
+map.createPane("labels"); map.getPane("labels").style.zIndex = 450; map.getPane("labels").style.pointerEvents = "none";
+setTiles();
+const CanvasOverlay = L.ImageOverlay.extend({ _initImage: function () { const e = this._image = this._url; L.DomUtil.addClass(e, "leaflet-image-layer"); L.DomUtil.addClass(e, "bv"); if (this._zoomAnimated) L.DomUtil.addClass(e, "leaflet-zoom-animated"); e.onselectstart = L.Util.falseFn; e.onmousemove = L.Util.falseFn; } });
+const LAT_TOP = 84, LAT_BOT = -60;
+const src = document.createElement("canvas"); src.width = NC; src.height = ROWS;
+const merc = document.createElement("canvas"); const mrows = BV.mercatorRows(NC, LAT_TOP, LAT_BOT, 90, 1 / 6);
+merc.width = NC; merc.height = mrows.length;
+const overlay = new CanvasOverlay(merc, [[LAT_BOT, -180], [LAT_TOP, 180]], { opacity: .92, interactive: false }).addTo(map);
+let marker = null;
+
+function pal() { return BV.palette(S.n); }
+function render() {
+  if (!G) return;
+  const v = periodVals(S.period), br = breaksFor(S.period, S.n, S.mode), P = pal();
+  const ctx = src.getContext("2d"), img = ctx.createImageData(NC, ROWS);
+  const mask = S.twinsOn && S.dist ? S.dist.map(d => d <= S.thr ? 1 : 0) : null;
+  BV.paint(img, G.pix, v.a, v.b, br.sun, br.rain, P, { only: S.only, mask, dim: isDark() ? [60, 55, 64, 170] : [228, 224, 216, 170] });
+  ctx.putImageData(img, 0, 0);
+  BV.reproject(src, merc, mrows);
+  // shares of land per class for the legend titles
+  const n = S.n, sh = new Float64Array(n * n); let tot = 0;
+  for (let c = 0; c < G.n; c++) { const i = BV.classOf(v.a[c], br.sun), j = BV.classOf(v.b[c], br.rain); sh[i * n + j] += G.w[c]; tot += G.w[c]; }
+  S.shares = Array.from(sh, x => x / tot);
+  drawLegend(); drawSliders(v, br); legendNote(); drawScatter(); if (S.place) drawCard();
+  document.getElementById("perTitle").textContent = PNAME[S.period];
+  document.getElementById("sunUnit").textContent = S.period === "year" ? "a year" : "in " + (PERIODS[S.period].length === 1 ? "the month" : "the season");
+  document.getElementById("rainUnit").textContent = document.getElementById("sunUnit").textContent;
+  const t = document.getElementById("shareNote");
+  t.textContent = S.twinsOn && S.dist ? `Showing places within ${S.thr.toFixed(2)} of ${S.place.name}: ${pc(twinShare(), 1)} of land.` : (S.mode === "quant" ? "Equal land: each band holds the same share of land on each axis." : S.mode === "fixed" ? "Fixed breaks, scaled to the length of the period." : "Your own breaks. Choose Equal land or Fixed to reset.");
+}
+let legendObj = null;
+function drawLegend() {
+  const P = pal();
+  legendObj = BV.legend(document.getElementById("legend"), S.n, P, {
+    share: (i, j) => pc(S.shares[i * S.n + j], 1) + " of land",
+    onHover: (i, j) => { S.only = i === null || i === undefined ? null : [i, j]; renderSoon(); legendNote(); }
+  });
+  if (S.only) legendObj.mark(S.only[0], S.only[1]);
+}
+function legendNote() {
+  const e = document.getElementById("legendNote");
+  if (S.only) { const [i, j] = S.only; e.innerHTML = `<b>${BV.classWords(i, j, S.n)}</b>: ${pc(S.shares[i * S.n + j], 1)} of land, ${S.period === "year" ? "whole year" : PNAME[S.period]}.`; }
+  else e.textContent = "Hover over a square to isolate a class; click to pin it.";
+}
+let rq = 0;
+function renderSoon() { cancelAnimationFrame(rq); rq = requestAnimationFrame(renderMapOnly); }
+function renderMapOnly() {
+  const v = periodVals(S.period), br = breaksFor(S.period, S.n, S.mode), P = pal();
+  const ctx = src.getContext("2d"), img = ctx.createImageData(NC, ROWS);
+  const mask = S.twinsOn && S.dist ? S.dist.map(d => d <= S.thr ? 1 : 0) : null;
+  BV.paint(img, G.pix, v.a, v.b, br.sun, br.rain, P, { only: S.only, mask, dim: isDark() ? [60, 55, 64, 170] : [228, 224, 216, 170] });
+  ctx.putImageData(img, 0, 0); BV.reproject(src, merc, mrows);
+}
+let sliders = {};
+function hist(vals, lo, hi, nb, tf, inv) {
+  const t0 = tf(lo), t1 = tf(hi), h = new Float64Array(nb); let tot = 0;
+  for (let c = 0; c < G.n; c++) { const t = (tf(Math.min(Math.max(vals[c], lo), hi)) - t0) / (t1 - t0); h[Math.min(nb - 1, Math.floor(t * nb))] += G.w[c]; tot += G.w[c]; }
+  return Array.from(h, (x, k) => ({ x0: inv(t0 + k / nb * (t1 - t0)), x1: inv(t0 + (k + 1) / nb * (t1 - t0)), w: x / tot }));
+}
+function drawSliders(v, br) {
+  const key = S.period + S.n + S.mode, P = pal();
+  const f = frac(S.period);
+  const sMax = S.period === "year" ? 4200 : Math.ceil(450 * PERIODS[S.period].length / 50) * 50;
+  const rMax = S.period === "year" ? 5000 : (PERIODS[S.period].length === 1 ? 800 : 2000);
+  const colsS = P.map(r => r[0].hex), colsR = P[0].map(c => c.hex);
+  const nice = (x, step) => Math.round(x / step) * step;
+  const sTicks = S.period === "year" ? [0, 1000, 2000, 3000, 4000] : (PERIODS[S.period].length === 1 ? [0, 100, 200, 300, 400] : [0, 300, 600, 900, 1200]);
+  const rTicks = S.period === "year" ? [0, 100, 500, 1000, 2000, 5000] : (PERIODS[S.period].length === 1 ? [0, 25, 100, 200, 400, 800] : [0, 50, 200, 500, 1000, 2000]);
+  if (sliders.key === key && S.mode !== "custom") { sliders.s.set(br.sun, colsS); sliders.r.set(br.rain, colsR); return; }
+  if (sliders.key === key) return;
+  sliders.key = key;
+  const onCh = axis => (b, done) => {
+    const cur = breaksFor(S.period, S.n, S.mode);
+    S.custom = { n: S.n, p: S.period, sun: axis === "sun" ? b : cur.sun.slice(), rain: axis === "rain" ? b : cur.rain.slice() };
+    if (S.mode !== "custom") { S.mode = "custom"; setPressed("modeSeg", "m", "custom"); document.querySelector('#modeSeg [data-m="custom"]').disabled = false; sliders.key = S.period + S.n + "custom"; }
+    if (done) render(); else renderSoon();
+  };
+  sliders.s = BV.breakSlider(document.getElementById("sunSlider"), { hist: hist(v.a, 0, sMax, 84, x => x, x => x), breaks: br.sun, colors: colsS, min: 0, max: sMax, ticks: sTicks, label: "Sunshine", fmt: (x, t) => fmt(x) + (t ? "" : " h"), onChange: onCh("sun"), round: x => nice(x, S.period === "year" ? 10 : 1) });
+  sliders.r = BV.breakSlider(document.getElementById("rainSlider"), { hist: hist(v.b, 0, rMax, 84, Math.sqrt, x => x * x), breaks: br.rain, colors: colsR, min: 0, max: rMax, scale: "sqrt", ticks: rTicks, label: "Rain", fmt: (x, t) => fmt(x) + (t ? "" : " mm"), onChange: onCh("rain"), round: x => nice(x, x < 100 ? 1 : 5) });
+}
+function setPressed(id, attr, val) { document.querySelectorAll(`#${id} .btn`).forEach(b => b.setAttribute("aria-pressed", b.dataset[attr] === String(val) ? "true" : "false")); }
+document.querySelectorAll("#perSeg .btn").forEach(b => b.onclick = () => { S.period = b.dataset.p; setPressed("perSeg", "p", S.period); document.getElementById("monthSel").value = ""; render(); });
+const msel = document.getElementById("monthSel");
+MONLONG.forEach((m, k) => { const o = document.createElement("option"); o.value = "m" + k; o.textContent = m; msel.appendChild(o); });
+msel.onchange = () => { if (!msel.value) return; S.period = msel.value; setPressed("perSeg", "p", "none"); render(); };
+document.querySelectorAll("#nSeg .btn").forEach(b => b.onclick = () => { S.n = +b.dataset.n; S.only = null; if (S.mode === "custom") { S.mode = "quant"; setPressed("modeSeg", "m", "quant"); } setPressed("nSeg", "n", S.n); render(); });
+document.querySelectorAll("#modeSeg .btn").forEach(b => b.onclick = () => { if (b.disabled) return; S.mode = b.dataset.m; setPressed("modeSeg", "m", S.mode); sliders.key = null; render(); });
+
+function cellAt(latlng) {
+  const lat = latlng.lat, lng = ((latlng.lng + 540) % 360) - 180;
+  if (lat > 90 || lat < -60) return -1;
+  const r = Math.floor((90 - lat) * 6), c = Math.floor((lng + 180) * 6);
+  if (r < 0 || r >= ROWS) return -1;
+  return G.cellOf[r * NC + Math.min(NC - 1, c)];
+}
+function cellLatLon(k) { const p = G.pix[k]; return [90 - (Math.floor(p / NC) + .5) / 6, -180 + (p % NC + .5) / 6]; }
+map.on("mousemove", e => {
+  if (!G) return; const k = cellAt(e.latlng);
+  if (k < 0) { hideTip(); return; }
+  const v = periodVals(S.period), br = breaksFor(S.period, S.n, S.mode), i = BV.classOf(v.a[k], br.sun), j = BV.classOf(v.b[k], br.rain), P = pal();
+  const r = map.getContainer().getBoundingClientRect();
+  showTip(`<i style="background:${P[i][j].hex}"></i><b>${BV.classWords(i, j, S.n)}</b><br>${PNAME[S.period]}: about ${fmt(v.a[k])} h of sun, ${fmt(v.b[k])} mm of rain${S.dist ? `<br>Likeness to ${esc(S.place.name)}: ${S.dist[k].toFixed(2)}` : ""}`, r.left + e.containerPoint.x, r.top + e.containerPoint.y - 6);
+});
+map.on("mouseout", hideTip);
+map.on("click", e => { if (!G) return; const k = cellAt(e.latlng); if (k < 0) return; const ll = cellLatLon(k); selectPlace({ name: `${Math.abs(ll[0]).toFixed(2)}°${ll[0] >= 0 ? "N" : "S"}, ${Math.abs(ll[1]).toFixed(2)}°${ll[1] >= 0 ? "E" : "W"}`, cc: "", country: "", lat: ll[0], lon: ll[1], pop: 0, k, spot: true, near: nearestCity(ll[0], ll[1]) }, false); });
+
+/* == places == */
+function nearestCity(lat, lon) {
+  if (!CITIES) return null; let best = null, bd = 1e9; const cl = Math.cos(lat * Math.PI / 180);
+  for (const c of CITIES) { const d = (c.lat - lat) ** 2 + ((c.lon - lon) * cl) ** 2; if (d < bd) { bd = d; best = c; } }
+  return best ? { c: best, km: Math.sqrt(bd) * 111.2 } : null;
+}
+const fold = s => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+async function loadCities() {
+  const j = await (await fetch("data/cities_page.json")).json();
+  CITIES = j.rows.map(r => ({ name: r[0], cc: r[1], lat: r[2], lon: r[3], pop: r[4], gc: r[5], sun_h: r[6], rain_mm: r[7], country: j.countries[r[1]] || r[1], f: fold(r[0]) }));
+  CITIES.forEach(c => c.k = G ? G.cellOf[c.gc] : -1);
+}
+const q = document.getElementById("q"), sug = document.getElementById("sug"); let sel = -1, opts = [];
+q.addEventListener("input", () => {
+  const t = fold(q.value.trim()); sel = -1;
+  if (!CITIES || t.length < 2) { sug.style.display = "none"; return; }
+  const a = [], b = [];
+  for (const c of CITIES) { if (c.f.startsWith(t)) a.push(c); else if (t.length > 2 && c.f.includes(t)) b.push(c); if (a.length > 12) break; }
+  opts = a.concat(b).slice(0, 12);
+  sug.innerHTML = opts.map((c, k) => `<li role="option" data-k="${k}">${esc(c.name)} <span>${esc(c.country)} · ${fmt(c.pop)}</span></li>`).join("");
+  sug.style.display = opts.length ? "block" : "none";
+});
+q.addEventListener("keydown", e => {
+  if (e.key === "ArrowDown" || e.key === "ArrowUp") { sel = Math.max(0, Math.min(opts.length - 1, sel + (e.key === "ArrowDown" ? 1 : -1))); [...sug.children].forEach((li, k) => li.setAttribute("aria-selected", k === sel)); e.preventDefault(); }
+  if (e.key === "Enter" && opts.length) { pick(opts[Math.max(0, sel)]); e.preventDefault(); }
+  if (e.key === "Escape") sug.style.display = "none";
+});
+sug.addEventListener("click", e => { const li = e.target.closest("li"); if (li) pick(opts[+li.dataset.k]); });
+function pick(c) { sug.style.display = "none"; q.value = c.name; selectPlace(c, true); }
+function findCity(name, cc) { return CITIES && CITIES.find(c => c.name === name && (!cc || c.cc === cc || c.country === cc)); }
+function selectPlace(c, fly) {
+  if (!G) return;
+  if (c.k === undefined || c.k < 0) c.k = G.cellOf[c.gc];
+  S.place = c; S.dist = null;
+  if (marker) map.removeLayer(marker);
+  marker = L.circleMarker([c.lat, c.lon], { radius: 7, color: "#211C24", weight: 2, fillColor: "#fff", fillOpacity: 1 }).addTo(map);
+  if (fly) map.setView([c.lat, c.lon], Math.max(map.getZoom(), 4));
+  S.dist = BV.distance(Array.from({ length: 12 }, (_, m) => G.sun[c.k * 12 + m]), Array.from({ length: 12 }, (_, m) => G.rain[c.k * 12 + m]), G.sun, G.rain, G.n, [R.similar.sd_sun, R.similar.sd_rootrain], S.flip);
+  drawCard(); render();
+}
+function twinShare() { let a = 0, t = 0; for (let c = 0; c < G.n; c++) { t += G.w[c]; if (S.dist[c] <= S.thr) a += G.w[c]; } return a / t; }
+function pctLand(vals, x) { let a = 0, t = 0; for (let c = 0; c < G.n; c++) { t += G.w[c]; if (vals[c] < x) a += G.w[c]; } return a / t; }
+function monthChart(host, sun, rain, opt) {
+  opt = opt || {};
+  resp(host, (W, narrow) => {
+    const H = opt.h || 200, ml = 34, mr = 40, mt = opt.small ? 10 : 24, mb = 24, iw = W - ml - mr, ih = H - mt - mb;
+    const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": opt.aria || "Monthly sunshine and rain" }, host);
+    const sMax = opt.sMax || Math.max(100, Math.ceil(Math.max(...sun) / 100) * 100), rMax = opt.rMax || Math.max(50, Math.ceil(Math.max(...rain) / 50) * 50);
+    const bw = iw / 12;
+    for (let t = 0; t <= 4; t++) { const y = mt + ih - t / 4 * ih; el("line", { x1: ml, x2: ml + iw, y1: y, y2: y, stroke: "var(--rule)" }, svg); lbl(svg, ml - 5, y + 4, fmt(t / 4 * sMax), "lab s m", "end"); lbl(svg, ml + iw + 5, y + 4, fmt(t / 4 * rMax), "lab s m"); }
+    rain.forEach((r, m) => el("rect", { x: ml + m * bw + bw * .18, y: mt + ih - r / rMax * ih, width: bw * .64, height: r / rMax * ih, fill: "var(--cool)", opacity: .7 }, svg));
+    el("path", { d: sun.map((s, m) => (m ? "L" : "M") + (ml + (m + .5) * bw).toFixed(1) + " " + (mt + ih - s / sMax * ih).toFixed(1)).join(""), fill: "none", stroke: "var(--hot)", "stroke-width": 2.6 }, svg);
+    sun.forEach((s, m) => el("circle", { cx: ml + (m + .5) * bw, cy: mt + ih - s / sMax * ih, r: 2.6, fill: "var(--hot)" }, svg));
+    MON.forEach((m, k) => lbl(svg, ml + (k + .5) * bw, H - 6, narrow && k % 2 ? "" : m.slice(0, narrow ? 1 : 3), "lab s m", "middle"));
+    if (!opt.small) { lbl(svg, ml - 5, 10, "sun, hours", "lab s m", "start").setAttribute("x", 0); lbl(svg, W, 10, "rain, mm", "lab s m", "end"); }
+    // hover per month
+    for (let m = 0; m < 12; m++) {
+      const r = el("rect", { x: ml + m * bw, y: mt, width: bw, height: ih, fill: "transparent" }, svg);
+      r.addEventListener("pointerenter", () => { const b = r.getBoundingClientRect(); showTip(`<b>${MONLONG[m]}</b><br>${fmt(sun[m])} h of sun · ${fmt(rain[m])} mm of rain`, b.left + b.width / 2, b.top + 10); });
+      r.addEventListener("pointerleave", hideTip);
+    }
+  });
+}
+function drawCard() {
+  const c = S.place, card = document.getElementById("card"), k = c.k;
+  const sun = Array.from({ length: 12 }, (_, m) => G.sun[k * 12 + m]), rain = Array.from({ length: 12 }, (_, m) => G.rain[k * 12 + m]);
+  const sy = c.spot ? sun.reduce((a, b) => a + b) : c.sun_h, ry = c.spot ? rain.reduce((a, b) => a + b) : c.rain_mm;
+  const ya = periodVals("year"), br = breaksFor("year", S.n, S.mode === "custom" ? "quant" : S.mode), P = pal();
+  const i = BV.classOf(sy, br.sun), j = BV.classOf(ry, br.rain);
+  const ps = pctLand(ya.a, sy), pr = pctLand(ya.b, ry);
+  const smax = sun.indexOf(Math.max(...sun)), rmax = rain.indexOf(Math.max(...rain));
+  const title = c.spot ? `This spot, ${c.name}` : `${esc(c.name)}, ${esc(c.country)}`;
+  const sub = c.spot ? (c.near ? `Nearest place in the list: ${esc(c.near.c.name)}, ${esc(c.near.c.country)}, ${fmt(c.near.km)} km away.` : "") : `${fmt(c.pop)} people (GeoNames). Climate of the nearest grid cell, 1961 to 1990.`;
+  card.innerHTML = `<div class="big">${title}</div><p class="sub">${sub}</p>
+   <span class="chip"><i style="background:${P[i][j].hex}"></i>${BV.classWords(i, j, S.n)} for the year (${S.mode === "fixed" ? "fixed" : "equal land"} breaks)</span>
+   <div class="nums"><div><b>${fmt(sy)}</b><span>hours of sunshine a year${c.spot ? " (about)" : ""}; sunnier than ${pc(ps)} of land</span></div>
+   <div><b>${fmt(ry)}</b><span>mm of rain a year${c.spot ? " (about)" : ""}; wetter than ${pc(pr)} of land</span></div>
+   <div><b>${MON[smax]} · ${MON[rmax]}</b><span>sunniest month · wettest month</span></div></div>
+   <div class="chart" id="cardChart"></div>
+   <div class="twin"><h3 style="margin:4px 0">Places like this</h3>
+   <div class="controls"><button class="btn" id="twinBtn" aria-pressed="${S.twinsOn}">Show them on the map</button>
+   <label class="ctl-l" for="thr">Strictness</label><input type="range" id="thr" min="0.15" max="1.2" step="0.05" value="${S.thr}" aria-label="How similar, lower is stricter"><span class="ctl-l" id="thrV">${S.thr.toFixed(2)}</span>
+   <label class="ctl-l"><input type="checkbox" id="flip" ${S.flip ? "checked" : ""}> allow the other hemisphere</label></div>
+   <p class="src" id="twinShare"></p><ol id="twins"></ol></div>`;
+  monthChart(document.getElementById("cardChart"), sun, rain, { aria: "Monthly sunshine and rain for " + c.name });
+  document.getElementById("twinBtn").onclick = () => { S.twinsOn = !S.twinsOn; if (S.twinsOn) map.setView([20, 10], 2); document.getElementById("twinBtn").setAttribute("aria-pressed", S.twinsOn); renderMapOnly(); render(); };
+  const thr = document.getElementById("thr");
+  thr.oninput = () => { S.thr = +thr.value; document.getElementById("thrV").textContent = S.thr.toFixed(2); twinList(); if (S.twinsOn) renderSoon(); };
+  thr.onchange = () => { if (S.twinsOn) render(); };
+  document.getElementById("flip").onchange = e => { S.flip = e.target.checked; selectPlace(S.place, false); };
+  twinList();
+}
+function twinList() {
+  const c = S.place, ol = document.getElementById("twins");
+  document.getElementById("twinShare").textContent = `${pc(twinShare(), 1)} of the world's land is within ${S.thr.toFixed(2)} of ${c.spot ? "this spot" : c.name}. Nearest big places (100,000 people or more), one per country:`;
+  if (!CITIES) { ol.innerHTML = ""; return; }
+  const own = c.cc || (c.near && c.near.c.cc);
+  const cand = CITIES.filter(x => x.pop >= 100000 && x.cc !== own && x.k >= 0).map(x => [x, S.dist[x.k]]).sort((a, b) => a[1] - b[1]);
+  const seen = new Set(), out = [];
+  for (const [x, d] of cand) { if (seen.has(x.cc)) continue; seen.add(x.cc); out.push([x, d]); if (out.length >= 8) break; }
+  ol.innerHTML = out.map(([x, d], k) => `<li data-k="${k}"><span><b>${esc(x.name)}</b>, ${esc(x.country)}</span><span>${d.toFixed(2)}${d > S.thr ? " (outside)" : ""}</span></li>`).join("");
+  [...ol.children].forEach((li, k) => li.onclick = () => { q.value = out[k][0].name; selectPlace(out[k][0], true); });
+}
+
+/* == corners == */
+function cityLink(r) { return `<a data-n="${esc(r.name)}" data-c="${esc(r.cc)}">${esc(r.name)}</a>`; }
+(function () {
+  const P = BV.palette(3), host = document.getElementById("corners");
+  const C = [
+    ["sunny_dry", 2, 0, "Sunny and dry", "The deserts and their edges: the Sahara, Arabia, Iran, the Sonoran, inland Australia. The biggest corner by far.", R.big.q_sunny_dry],
+    ["sunny_wet", 2, 2, "Sunny and wet", "The rare corner: mostly the savannas and highlands of Africa, northern Australia and inland Brazil, where a short, heavy rainy season sits in a long bright year. Among big cities, Java and Cuba too.", R.big.q_sunny_wet],
+    ["dull_dry", 0, 0, "Dull and dry", "The strangest corner: mostly the far north of Canada, Alaska and Siberia, where dark winters and cold air keep both low. And the desert coast of Peru, where a cold sea makes cloud but almost no rain.", R.big.q_dull_dry],
+    ["dull_wet", 0, 2, "Dull and wet", "The Amazon and Congo basins, southern China, eastern Canada and the north-west edge of Europe, Britain included.", R.big.q_dull_wet]];
+  host.innerHTML = C.map(([k, i, j, t, d, rows]) => `<div class="card" style="border-left-color:${P[i][j].hex}"><b>${t}</b><div class="big">${pc(R.corners_q[k], 1)} <span>of land · ${pc(R.corners_q_pop[k], 1)} of city people</span></div><p style="margin:6px 0">${d}</p><p style="margin:0">Big cities (${rows.length}): ${rows.slice(0, 5).map(cityLink).join(", ")}</p></div>`).join("");
+  host.addEventListener("click", e => { const a = e.target.closest("a[data-n]"); if (!a) return; const c = findCity(a.dataset.n, a.dataset.c); if (c) { q.value = c.name; selectPlace(c, true); document.getElementById("q").scrollIntoView({ behavior: "smooth", block: "center" }); } });
+})();
+
+/* == scatter of big cities == */
+const scatterHost = document.getElementById("scatter");
+let scatterReady = false;
+function drawScatter() {
+  if (!G) return;
+  if (!scatterReady) { scatterReady = true; resp(scatterHost, scatterRender); } else scatterRender(Math.max(280, Math.round(scatterHost.clientWidth)), scatterHost.clientWidth < 560, true);
+}
+function scatterRender(W, narrow, re) {
+  if (re) scatterHost.innerHTML = "";
+  const H = narrow ? 420 : 500, ml = 52, mr = 14, mt = 14, mb = 44, iw = W - ml - mr, ih = H - mt - mb;
+  const x0 = 900, x1 = 4000, y0 = Math.log10(10), y1 = Math.log10(5000);
+  const X = v => ml + (Math.min(Math.max(v, x0), x1) - x0) / (x1 - x0) * iw, Y = v => mt + ih - (Math.log10(Math.min(Math.max(v, 10), 5000)) - y0) / (y1 - y0) * ih;
+  const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": "Scatter of big cities by sunshine and rain" }, scatterHost);
+  const br = breaksFor("year", S.n, S.mode), P = pal();
+  const xs = [x0].concat(br.sun, [x1]), ys = [10].concat(br.rain, [5000]);
+  for (let i = 0; i < S.n; i++) for (let j = 0; j < S.n; j++) {
+    const a = X(xs[i]), b = X(xs[i + 1]), c = Y(ys[j + 1]), d = Y(ys[j]);
+    if (b > a && d > c) el("rect", { x: a, y: c, width: b - a, height: d - c, fill: P[i][j].hex, opacity: .28 }, svg);
+  }
+  [1000, 1500, 2000, 2500, 3000, 3500, 4000].forEach(t => { el("line", { x1: X(t), x2: X(t), y1: mt, y2: mt + ih, stroke: "var(--rule)" }, svg); lbl(svg, X(t), mt + ih + 16, narrow && t % 1000 ? "" : fmt(t), "lab s m", "middle"); });
+  [10, 30, 100, 300, 1000, 3000].forEach(t => { el("line", { x1: ml, x2: ml + iw, y1: Y(t), y2: Y(t), stroke: "var(--rule)" }, svg); lbl(svg, ml - 6, Y(t) + 4, fmt(t), "lab s m", "end"); });
+  lbl(svg, ml + iw / 2, H - 6, "hours of sunshine a year", "lab m", "middle");
+  const yl = lbl(svg, 0, 0, "mm of rain a year", "lab m", "middle"); yl.setAttribute("transform", `translate(12 ${mt + ih / 2}) rotate(-90)`);
+  const rows = R.big.rows.slice().sort((a, b) => (a[1] === "GB") - (b[1] === "GB"));
+  rows.forEach(r => {
+    const i = BV.classOf(r[3], br.sun), j = BV.classOf(r[4], br.rain), uk = r[1] === "GB";
+    const c = el("circle", { cx: X(r[3]), cy: Y(r[4]), r: Math.max(2.6, Math.min(9, Math.sqrt(r[2] / 1e6) * 1.9)), fill: P[i][j].hex, stroke: uk ? "var(--fg)" : "var(--muted)", "stroke-width": uk ? 2 : .5 }, svg);
+    c.style.cursor = "pointer";
+    c.addEventListener("pointerenter", () => { const b = c.getBoundingClientRect(); showTip(`<b>${esc(r[0])}</b>, ${esc(R.big_cc[r[1]] || r[1])}<br>${fmt(r[3])} h of sun · ${fmt(r[4])} mm of rain<br>${BV.classWords(i, j, S.n)}`, b.left + b.width / 2, b.top); });
+    c.addEventListener("pointerleave", hideTip);
+    c.addEventListener("click", e => { e.stopPropagation(); const cc = findCity(r[0], r[1]); if (cc) { q.value = cc.name; selectPlace(cc, true); } });
+  });
+  [["London", "GB", 1], ["Lima", "PE", 0], ["Phoenix", "US", 0], ["Chongqing", "CN", -1], ["Surabaya", "ID", 0], ["Conakry", "GN", 0], ["Cairo", "EG", 0], ["Singapore", "SG", -1], ["Guayaquil", "EC", 1]].filter(x => !narrow || ["London", "Lima", "Phoenix", "Cairo", "Surabaya"].includes(x[0])).forEach(([n, cc, dy]) => {
+    const r = R.big.rows.find(x => x[0] === n && x[1] === cc); if (!r) return;
+    const t = lbl(svg, X(r[3]) + 9, Y(r[4]) + 4 + dy * 13, n, "lab b"); if (X(r[3]) > ml + iw - 80) { t.setAttribute("text-anchor", "end"); t.setAttribute("x", X(r[3]) - 9); }
+  });
+}
+
+/* == UK strip == */
+resp(document.getElementById("ukstrip"), (W, narrow) => {
+  const H = 226, ml = 10, mr = 10, mt = 58, mb = 50, iw = W - ml - mr, ih = H - mt - mb, host = document.getElementById("ukstrip");
+  const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": "World land by annual sunshine with UK cities marked" }, host);
+  const e = R.hist.sun_edges, h = R.hist.sun, X = v => ml + v / 4200 * iw, hm = Math.max(...h);
+  const P = BV.palette(3), b = R.breaks.quant3.sun;
+  h.forEach((v, k) => { const c = BV.classOf((e[k] + e[k + 1]) / 2, b); el("rect", { x: X(e[k]), y: mt + ih - v / hm * ih, width: X(e[k + 1]) - X(e[k]) - .6, height: v / hm * ih, fill: P[c][0].hex, stroke: "var(--border)", "stroke-width": .4 }, svg); });
+  el("line", { x1: ml, x2: ml + iw, y1: mt + ih, y2: mt + ih, stroke: "var(--muted)" }, svg);
+  [0, 1000, 2000, 3000, 4000].forEach(t => lbl(svg, X(t), mt + ih + 16, fmt(t) + (t === 4000 ? " h" : ""), "lab s m", "middle"));
+  R.uk_cities.forEach(c => el("line", { x1: X(c.sun_h), x2: X(c.sun_h), y1: mt - 6, y2: mt + ih, stroke: "var(--deep)", "stroke-width": 1, opacity: .55 }, svg));
+  const lab = [[R.uk.dullest_city.name, R.uk.dullest_city.sun_h, 0], ["London", R.london.sun, 1], [R.uk.sunniest_city.name, R.uk.sunniest_city.sun_h, 2]];
+  lab.forEach(([n, v, k]) => { el("line", { x1: X(v), x2: X(v), y1: mt - 8 - k * 14, y2: mt, stroke: "var(--fg)" }, svg); lbl(svg, X(v) + (k === 0 ? -4 : 4), mt - 10 - k * 14, `${n} ${fmt(v)}`, "lab s b", k === 0 ? "end" : "start"); });
+  el("line", { x1: X(R.sun.median), x2: X(R.sun.median), y1: mt, y2: mt + ih + 22, stroke: "var(--fg)", "stroke-dasharray": "3 3" }, svg);
+  lbl(svg, X(R.sun.median) + 4, mt + ih + 34, "world median, " + fmt(R.sun.median) + " h", "lab s b");
+});
+
+/* == rankings == */
+const RK = { k: "sunniest", g: "cities" };
+function drawRank() {
+  const t = document.getElementById("rank"), P = BV.palette(3), b = R.breaks.quant3;
+  const sw = (s, r) => { const i = BV.classOf(s, b.sun), j = BV.classOf(r, b.rain); return `<i class="sw" style="background:${P[i][j].hex}"></i>`; };
+  if (RK.g === "cities") {
+    const rows = R.big[RK.k];
+    t.innerHTML = `<thead><tr><th>#</th><th>City</th><th class="num">Sun, h</th><th class="num">Rain, mm</th><th class="num wide">People</th></tr></thead><tbody>` +
+      rows.map((r, k) => `<tr class="go" data-k="${k}"><td>${k + 1}</td><td>${sw(r.sun_h, r.rain_mm)}<b>${esc(r.name)}</b><small>${esc(r.country)}</small></td><td class="num">${fmt(r.sun_h)}</td><td class="num">${fmt(r.rain_mm)}</td><td class="num wide">${fmt(r.pop)}</td></tr>`).join("") + "</tbody>";
+    [...t.querySelectorAll("tr.go")].forEach(tr => tr.onclick = () => { const r = rows[+tr.dataset.k], c = findCity(r.name, r.cc); if (c) { q.value = c.name; selectPlace(c, true); document.getElementById("q").scrollIntoView({ behavior: "smooth", block: "center" }); } });
+  } else {
+    const rows = R.countries[RK.k];
+    t.innerHTML = `<thead><tr><th>#</th><th>Country</th><th class="num">Sun, h</th><th class="num">Rain, mm</th></tr></thead><tbody>` +
+      rows.map((r, k) => `<tr><td>${k + 1}</td><td>${sw(r.sun_h, r.rain_mm)}<b>${esc(r.country)}</b></td><td class="num">${fmt(r.sun_h)}</td><td class="num">${fmt(r.rain_mm)}</td></tr>`).join("") + "</tbody>";
+  }
+}
+document.querySelectorAll("#rankSeg .btn").forEach(b => b.onclick = () => { if (b.dataset.k) { RK.k = b.dataset.k; document.querySelectorAll("#rankSeg [data-k]").forEach(x => x.setAttribute("aria-pressed", x === b)); } else { RK.g = b.dataset.g; document.querySelectorAll("#rankSeg [data-g]").forEach(x => x.setAttribute("aria-pressed", x === b)); } drawRank(); });
+drawRank();
+
+/* == seasons == */
+(function () {
+  const host = document.getElementById("multiples");
+  ["London", "Mumbai", "Lima", "Cairo", "Singapore", "Kolkata"].forEach(n => {
+    const p = R.profiles[n], d = document.createElement("div"); d.className = "m";
+    d.innerHTML = `<h5>${n}</h5><p>${fmt(p.sun_h)} h · ${fmt(p.rain_mm)} mm a year</p><div class="chart"></div>`;
+    host.appendChild(d);
+    monthChart(d.querySelector(".chart"), p.sun, p.rain, { h: 150, sMax: 400, rMax: 1000, small: true, aria: "Monthly sunshine and rain in " + n });
+  });
+})();
+
+document.getElementById("theme").onclick = () => { const r = document.documentElement; r.dataset.theme = isDark() ? "light" : "dark"; setTiles(); redraws.forEach(f => f()); render(); };
+
+(async function () {
+  try { await loadGrid(); } catch (e) { document.getElementById("loading").textContent = "The climate grids could not be loaded."; return; }
+  document.getElementById("loading").remove();
+  render();
+  try { await loadCities(); } catch (e) { document.getElementById("card").innerHTML = '<p class="sub">The place list could not be loaded; click the map instead.</p>'; return; }
+  const h = decodeURIComponent(location.hash.slice(1));
+  const start = (h && CITIES.find(c => c.f === fold(h))) || findCity("London", "GB");
+  q.value = start.name; selectPlace(start, false);
+})();
+</script>
+</body>
+</html>
