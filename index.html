@@ -1,0 +1,938 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Sun and Rain</title>
+<meta name="description" content="A bivariate world map of annual sunshine against annual rainfall, 1961 to 1990, that you can re-cut by month and class breaks, with a city search and a places-like-this finder.">
+<meta property="og:title" content="Sun and rain: the world's sunshine against its rainfall">
+<meta property="og:description" content="566,262 land cells, 34,167 cities. Sunny and dry, sunny and wet, dull and dry, dull and wet: find where your town sits and which places share its weather.">
+<meta property="og:image" content="https://tristan-hotham.github.io/sun-and-rain/header.png">
+<meta property="og:url" content="https://tristan-hotham.github.io/sun-and-rain/">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,800;9..144,900&family=IBM+Plex+Mono:wght@400;500&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&display=swap">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<style>
+/* Warm paper. The four corner colours of the bivariate palette (see code/bivariate.js) drive the accents. */
+:root{
+  --bg:#F7F3EC; --panel:#EEE8DD; --fg:#211C24; --muted:#6A6270; --rule:#DED6C9; --card:#FCFAF6; --border:#CDC3B3;
+  --hot:#C9661C; --cool:#2E8F8C; --deep:#3B1D47; --pale:#EDE8DF;
+  --display:"Fraunces",Georgia,"Times New Roman",serif;
+  --body:"Source Serif 4",Georgia,"Times New Roman",serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#17141A; --panel:#221E25; --fg:#EFEAE4; --muted:#A79FAB; --rule:#38323C; --card:#211D24; --border:#4A4350;
+  --hot:#F0974F; --cool:#5CC0BB; --deep:#C9A6D8; --pale:#3A3540; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#17141A; --panel:#221E25; --fg:#EFEAE4; --muted:#A79FAB; --rule:#38323C; --card:#211D24; --border:#4A4350;
+  --hot:#F0974F; --cool:#5CC0BB; --deep:#C9A6D8; --pale:#3A3540; color-scheme:dark}
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--fg);font:400 18px/1.62 var(--body);
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));overflow-x:hidden}
+.wrap{max-width:680px;margin:0 auto;padding-block:28px 64px}
+.wrap .bleed{width:min(1120px,calc(100vw - 32px));margin-left:calc((100% - min(1120px,100vw - 32px))/2);margin-right:0}
+a{color:inherit;text-decoration-color:var(--hot);text-underline-offset:3px}
+.kicker{font:500 12px/1 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--muted);display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.kicker b{background:var(--deep);color:#fff;padding:5px 8px;font-weight:500}
+:root[data-theme="dark"] .kicker b{color:#17141A}
+header.hero{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px 24px;align-items:end;border-bottom:6px double var(--fg);padding-bottom:22px;margin-top:18px}
+h1{font:900 clamp(46px,12vw,100px)/.88 var(--display);letter-spacing:-.02em;margin:0;text-wrap:balance;font-variation-settings:"SOFT" 50}
+h1 .s{color:var(--hot)} h1 .r{color:var(--cool)}
+.mark{width:clamp(78px,17vw,132px);height:auto;display:block}
+.dek{grid-column:1/-1;font-size:21px;line-height:1.42;margin:8px 0 0;max-width:48ch}
+.byline{font:400 13px/1.4 var(--mono);color:var(--muted);margin-top:14px}
+h2{font:800 34px/1.04 var(--display);letter-spacing:-.01em;margin:52px 0 10px;text-wrap:balance}
+h2 .n{font:500 13px/1 var(--mono);color:var(--hot);display:block;letter-spacing:.1em;margin-bottom:10px}
+h3{font:600 20px/1.25 var(--display);margin:28px 0 6px}
+p{margin:0 0 16px}
+.lede::first-letter{font:900 72px/.8 var(--display);float:left;margin:6px 10px 0 0;color:var(--hot)}
+.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1px;background:var(--rule);border:1px solid var(--rule);margin:26px 0 8px}
+.stats div{background:var(--card);padding:14px 12px}
+.stats b{display:block;font:900 clamp(22px,4.4vw,32px)/1 var(--display);color:var(--fg);letter-spacing:-.01em}
+.stats b.h{color:var(--hot)} .stats b.c{color:var(--cool)}
+.stats span{font:400 12px/1.35 var(--mono);color:var(--muted);display:block;margin-top:6px}
+@media (max-width:600px){.stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.figure{margin:26px 0 30px}
+.fig-h{font:600 19px/1.25 var(--display);margin:0 0 4px}
+.fig-sub{font:400 13px/1.45 var(--mono);color:var(--muted);margin:0 0 12px}
+.src{font:400 12px/1.45 var(--mono);color:var(--muted);margin-top:10px}
+.chart{width:100%;position:relative}
+.chart svg{display:block;width:100%;height:auto;overflow:visible}
+svg text{font-family:var(--mono);fill:var(--fg)}
+.lab{font-size:12px}.lab.m{fill:var(--muted)}.lab.b{font-weight:500}.lab.s{font-size:11px}
+.tip{position:absolute;pointer-events:none;background:var(--fg);color:var(--bg);font:400 12px/1.45 var(--mono);padding:8px 10px;border-radius:3px;max-width:280px;z-index:1000;transform:translate(-50%,calc(-100% - 12px));display:none}
+.tip b{font-weight:500}
+.tip i{display:inline-block;width:10px;height:10px;margin-right:5px;vertical-align:-1px;border:1px solid rgba(255,255,255,.5)}
+.controls{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:0 0 10px}
+.ctl-l{font:500 11px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-right:2px}
+.btn{font:500 12px/1 var(--mono);background:var(--card);color:var(--fg);border:1px solid var(--border);border-radius:3px;padding:8px 10px;cursor:pointer;min-height:36px}
+.btn[aria-pressed="true"]{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+.btn:focus-visible,input:focus-visible,summary:focus-visible,select:focus-visible,.hdl:focus-visible,.bvcell:focus-visible{outline:2px solid var(--hot);outline-offset:2px}
+.seg{display:inline-flex;border:1px solid var(--border);border-radius:3px;overflow:hidden;max-width:100%;flex-wrap:wrap}
+.seg .btn{border:0;border-radius:0;border-right:1px solid var(--border)}
+.seg .btn:last-child{border-right:0}
+select{font:500 12px/1 var(--mono);background:var(--card);color:var(--fg);border:1px solid var(--border);border-radius:3px;padding:8px 6px;min-height:36px}
+.searchbox{position:relative;flex:1 1 240px;min-width:0}
+input[type=search]{font:400 15px/1 var(--mono);background:var(--card);color:var(--fg);border:1px solid var(--border);border-radius:3px;padding:10px 11px;min-height:40px;width:100%}
+.suggest{position:absolute;left:0;right:0;top:100%;margin:2px 0 0;padding:0;list-style:none;background:var(--card);border:1px solid var(--border);z-index:1001;font:400 13px/1.3 var(--mono);display:none;max-height:340px;overflow:auto}
+.suggest li{padding:8px 10px;cursor:pointer;border-bottom:1px solid var(--rule)}
+.suggest li span{color:var(--muted)}
+.suggest li[aria-selected="true"],.suggest li:hover{background:var(--panel)}
+.mapgrid{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:14px;align-items:start}
+@media (max-width:900px){.mapgrid{grid-template-columns:1fr}}
+.side{background:var(--card);border:1px solid var(--border);padding:12px 12px 10px;font:400 13px/1.45 var(--mono)}
+.side h4{font:500 11px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:12px 0 8px}
+.side h4:first-child{margin-top:2px}
+#legend svg{display:block;max-width:100%;height:auto}
+#legendNote{min-height:38px;color:var(--muted);font-size:12px}
+#legendNote b{color:var(--fg);font-weight:500}
+.bslider{display:block;width:100%;height:auto;touch-action:none;overflow:visible}
+.slwrap{margin:2px 0 8px}
+.bvvals{font:400 11.5px/1.3 var(--mono);color:var(--fg);margin-top:2px}
+.slwrap .t{font:500 12px/1.2 var(--mono);display:flex;justify-content:space-between;gap:8px}
+.slwrap .t span{color:var(--muted);font-weight:400}
+#lmap{height:600px;border:1px solid var(--border);background:var(--panel);border-radius:2px}
+@media (max-width:600px){#lmap{height:440px}}
+.leaflet-container{font:400 12px/1.4 var(--mono);background:var(--panel)}
+.leaflet-image-layer.bv{image-rendering:pixelated;image-rendering:crisp-edges}
+.leaflet-popup-content-wrapper,.leaflet-popup-tip{background:var(--card);color:var(--fg);border-radius:3px;box-shadow:0 2px 10px rgba(0,0,0,.25)}
+.leaflet-bar a,.leaflet-bar a:hover{background:var(--card);color:var(--fg);border-bottom-color:var(--border)}
+.leaflet-control-attribution{background:color-mix(in srgb,var(--card) 85%,transparent)!important;color:var(--muted)}
+.leaflet-control-attribution a{color:var(--fg)}
+.loading{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font:500 13px/1.4 var(--mono);color:var(--muted);background:color-mix(in srgb,var(--panel) 80%,transparent);z-index:900;pointer-events:none}
+.mapbox{position:relative}
+.finder{background:var(--card);border:1px solid var(--border);border-top:6px solid var(--hot);padding:16px 16px 12px;margin:20px 0 14px}
+#card .big{font:800 clamp(22px,4.6vw,30px)/1.15 var(--display);margin:8px 0 4px;text-wrap:balance}
+#card .sub{font:400 13px/1.45 var(--mono);color:var(--muted);margin:0 0 10px}
+#card .nums{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1px;background:var(--rule);border:1px solid var(--rule);margin:8px 0 12px}
+#card .nums div{background:var(--bg);padding:10px}
+#card .nums b{display:block;font:800 24px/1 var(--display)}
+#card .nums span{display:block;font:400 11.5px/1.35 var(--mono);color:var(--muted);margin-top:4px}
+@media (max-width:520px){#card .nums{grid-template-columns:1fr 1fr}}
+.chip{display:inline-flex;align-items:center;gap:6px;font:500 12px/1 var(--mono);padding:6px 9px;border-radius:999px;border:1px solid var(--border);background:var(--bg)}
+.chip i{width:12px;height:12px;border-radius:2px;display:inline-block}
+.twin{margin-top:14px;border-top:1px solid var(--rule);padding-top:10px}
+.twin .controls{margin:6px 0}
+.twin input[type=range]{width:160px;accent-color:var(--hot)}
+#twins{list-style:none;margin:6px 0;padding:0;font:400 13px/1.35 var(--mono)}
+#twins li{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;padding:6px 0;border-bottom:1px solid var(--rule);cursor:pointer}
+#twins li span{color:var(--muted)}
+#twins li:hover{background:var(--panel)}
+.pull{font:600 26px/1.25 var(--display);border-left:6px solid var(--hot);padding:4px 0 4px 18px;margin:30px 0}
+.note{background:var(--panel);border:1px solid var(--rule);padding:14px 16px;font-size:16px;margin:22px 0}
+.note h3{margin-top:0}
+table.t{width:100%;border-collapse:collapse;font:400 13px/1.35 var(--mono)}
+table.t th{text-align:left;font-weight:500;color:var(--muted);border-bottom:2px solid var(--fg);padding:6px 8px 6px 0}
+table.t td{border-bottom:1px solid var(--rule);padding:7px 8px 7px 0;vertical-align:top}
+table.t td.num,table.t th.num{text-align:right;white-space:nowrap}
+table.t td small{color:var(--muted);display:block}
+table.t tr.go{cursor:pointer}
+table.t tr.go:hover td{background:var(--panel)}
+table.t i.sw{display:inline-block;width:11px;height:11px;border-radius:2px;margin-right:6px;vertical-align:-1px}
+.tablewrap{overflow-x:auto}
+@media (max-width:600px){table.t .wide{display:none}}
+.cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:20px 0}
+@media (max-width:600px){.cards{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--border);border-left:8px solid var(--hot);padding:12px 14px;font:400 13px/1.5 var(--mono)}
+.card b{font:600 19px/1.2 var(--display);display:block;margin-bottom:2px}
+.card .big{font:900 30px/1.05 var(--display);margin:6px 0 2px}
+.card .big span{color:var(--muted);font:400 13px/1 var(--mono)}
+.card a{cursor:pointer}
+.multiples{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+@media (max-width:700px){.multiples{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.multiples .m h5{font:600 16px/1.2 var(--display);margin:0}
+.multiples .m p{font:400 11.5px/1.3 var(--mono);color:var(--muted);margin:2px 0 4px}
+.legend{display:flex;gap:6px 14px;flex-wrap:wrap;font:400 12px/1.3 var(--mono);color:var(--muted);margin-top:8px}
+.legend i{display:inline-block;width:14px;height:3px;margin-right:6px;vertical-align:3px}
+.legend i.bar{height:11px;width:11px;vertical-align:-1px}
+details{margin:14px 0}
+summary{font:500 13px/1.4 var(--mono);cursor:pointer;color:var(--fg);padding:8px 0}
+.cta{display:flex;gap:10px;flex-wrap:wrap;margin:18px 0}
+.cta a{font:500 13px/1 var(--mono);text-decoration:none;border:1px solid var(--fg);padding:11px 14px;border-radius:3px}
+.cta a.p{background:var(--hot);border-color:var(--hot);color:#fff}
+footer{border-top:6px double var(--fg);margin-top:56px;padding-top:16px;font:400 13px/1.55 var(--mono);color:var(--muted)}
+footer p{margin:0 0 10px}
+.theme{position:fixed;right:12px;bottom:12px;z-index:1002}
+@media print{.theme,.controls{display:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<div class="kicker"><b>Data study</b><span>Climate</span><span>World, 1961 to 1990 normals</span></div>
+<header class="hero">
+  <h1><span class="s">Sun</span> and <span class="r">rain</span></h1>
+  <svg class="mark" viewBox="0 0 132 132" aria-hidden="true"><g id="heroMark"></g></svg>
+  <p class="dek">Some places are sunny and dry, some dull and wet. A few manage to be sunny and wet, and a strange handful are dull and dry. This is the world's sunshine set against its rainfall, cell by cell, on a map you can re-cut by month and by where you draw the lines. Where does your town sit, and which places share its weather?</p>
+</header>
+<div class="byline">Dr Tristan Hotham, Independent researcher · October 2026 · Data: CRU CL 2.0 (New et al. 2002); WorldClim 2.1 cross-check; GeoNames; Natural Earth</div>
+
+<div class="stats">
+  <div><b>566,262</b><span>land cells of 10 arc-minutes (about 18 km) with both sunshine and rain</span></div>
+  <div><b class="h">4,027</b><span>hours of sunshine a year in the sunniest cell, northern Sudan</span></div>
+  <div><b class="c">3.0%</b><span>of land is in both the sunniest and the wettest third</span></div>
+  <div><b>84%</b><span>of the world's land is sunnier than the sunniest spot in the UK</span></div>
+</div>
+
+<p class="lede">Ask anyone in Britain about the weather and you will hear about two things: whether the sun came out, and whether it rained. They are not the same question. Lima, on the coast of Peru, gets less rain in a year than London gets in a fortnight, yet it is one of the dullest big cities on Earth. Surabaya in Java is soaked by the monsoon and still sunnier than Madrid. Put the two measures together on one map and the world falls into four corners and a middle.</p>
+<p>I took the Climatic Research Unit's 10-minute climatology for 1961 to 1990 (CRU CL 2.0), which gives every land cell outside Antarctica a monthly average for sunshine and for rainfall. Sunshine comes as a percentage of the possible daylight, which I converted to hours using the length of the day at each latitude in each month. Then I coloured every cell by two things at once: which third of the world's land it falls in for sunshine, and which third for rain. Nine classes, four corners. Drag the lines, pick a month, and the map redraws.</p>
+
+<h2><span class="n">01 · The map</span>Sunshine against rain, everywhere</h2>
+<p>Each cell is coloured by its class. By default the breaks are terciles of land area, so each third of the land falls on each side of each line, and every class shows up. Switch to fixed breaks for round numbers, or drag the handles under the legend. Hover over (or tap) a legend square to see only those cells. Hover over the map to read a cell; click to open it below.</p>
+<div class="bleed">
+<div class="controls" role="group" aria-label="Map controls">
+  <span class="ctl-l">When</span>
+  <div class="seg" id="perSeg"><button class="btn" data-p="year" aria-pressed="true">Year</button><button class="btn" data-p="DJF">Dec to Feb</button><button class="btn" data-p="MAM">Mar to May</button><button class="btn" data-p="JJA">Jun to Aug</button><button class="btn" data-p="SON">Sep to Nov</button></div>
+  <select id="monthSel" aria-label="Pick a month"><option value="">or a month</option></select>
+  <span class="ctl-l">Classes</span>
+  <div class="seg" id="nSeg"><button class="btn" data-n="3" aria-pressed="true">3 × 3</button><button class="btn" data-n="4">4 × 4</button></div>
+  <span class="ctl-l">Breaks</span>
+  <div class="seg" id="modeSeg"><button class="btn" data-m="quant" aria-pressed="true">Equal land</button><button class="btn" data-m="fixed">Fixed</button><button class="btn" data-m="custom" disabled>Yours</button></div>
+</div>
+<div class="mapgrid">
+  <div class="mapbox"><div id="lmap" role="application" aria-label="Bivariate map of sunshine and rain"></div><div class="loading" id="loading">Loading the climate grids…</div></div>
+  <div class="side">
+    <h4 id="perTitle">Whole year</h4>
+    <div id="legend"></div>
+    <div id="legendNote">Hover over a square to isolate a class; click to pin it.</div>
+    <h4>Sunshine breaks</h4>
+    <div class="slwrap"><div class="t">Hours of sunshine <span id="sunUnit"></span></div><div id="sunSlider"></div></div>
+    <h4>Rain breaks</h4>
+    <div class="slwrap"><div class="t">Millimetres of rain <span id="rainUnit"></span></div><div id="rainSlider"></div></div>
+    <div class="src" id="shareNote"></div>
+  </div>
+</div>
+<p class="src">Sunshine: CRU CL 2.0 percentage of possible sunshine, converted to hours with the astronomical day length. Rain: CRU CL 2.0 precipitation. Both are 1961 to 1990 averages on a 10 arc-minute grid of land (no Antarctica). Shares are of land area. Base map tiles © Esri.</p>
+</div>
+
+<h2><span class="n">02 · Your place</span>Find a town, and its weather twins</h2>
+<p>Search any of the 34,167 places in GeoNames with 15,000 people or more, or click anywhere on the map. You get its year of sunshine and rain, month by month, where it falls in the world, and the places whose twelve months look most like it. Weather twins can be on the other side of the equator: tick the box to let a southern summer match a northern one.</p>
+<div class="finder">
+  <div class="controls">
+    <div class="searchbox"><input type="search" id="q" placeholder="Search a city or town, e.g. Leeds, Lima, Perth" autocomplete="off" aria-label="Search a place" aria-autocomplete="list" aria-controls="sug"><ul class="suggest" id="sug" role="listbox"></ul></div>
+  </div>
+  <div id="card"><p class="sub">Loading the place list…</p></div>
+</div>
+
+<h2><span class="n">03 · Four corners</span>Sunny and dry, sunny and wet, dull and dry, dull and wet</h2>
+<p>If sunshine and rain had nothing to do with each other, each of the nine tercile classes would hold a ninth of the land, about 11%. They do not. Sunny places tend to be dry and dull places wet (Spearman's rank correlation across cells is −0.24), so the sunny and dry corner holds 21% of the world's land and the sunny and wet corner only 3.0%. Click a city to open it.</p>
+<div class="cards" id="corners"></div>
+<div class="figure bleed">
+  <p class="fig-h">The world's big cities by sunshine and rain</p>
+  <p class="fig-sub">573 places in GeoNames with a million people or more, on the classes currently set on the map (whole year). UK cities are ringed. Rain is on a log scale.</p>
+  <div class="chart" id="scatter"></div>
+</div>
+
+<h2><span class="n">04 · Where the UK sits</span>Near the dull end of the world</h2>
+<p>The UK's land averages 1,319 hours of sunshine and 1,121 mm of rain a year in this data. Among the 156 countries with at least 20,000 km² of land in the grid, only Iceland, Ireland and Norway are duller. The sunniest UK cell, on the Sussex coast near Bognor Regis, gets 1,774 hours, and 84% of the world's land gets more. Every bit of the UK is in the dullest third of the world's land.</p>
+<p>Rain is a different story. At 628 mm a year, London is drier than 415 of the 573 big cities. The UK is wet in the sense that it rains often, lightly, under cloud; it is not wet in total, except in the western hills, where one cell near Loch Lomond reaches 3,300 mm. What really sets Britain apart is the lack of sun: of the people counted in the 34,167 places of this study, 96% live somewhere sunnier than London.</p>
+<div class="figure">
+  <p class="fig-h">UK cities on the world's sunshine scale</p>
+  <p class="fig-sub">Bars: share of the world's land by annual sunshine hours. Ticks: UK places of 150,000 people or more.</p>
+  <div class="chart" id="ukstrip"></div>
+</div>
+
+<h2><span class="n">05 · Rankings</span>Sunniest, dullest, wettest, driest</h2>
+<p>The sunniest big city in the grid is Phoenix (3,817 hours), with the cities of the Sonoran Desert, Arabia, Iraq and Sudan close behind. The dullest is Guayaquil in Ecuador (1,154 hours), then six cities of Sichuan, Chongqing and Guizhou in south-west China, a region known for low cloud. Next comes Birmingham, in the English Midlands, with 1,356 hours. Click a row to open the city.</p>
+<div class="controls" id="rankSeg"><div class="seg"><button class="btn" data-k="sunniest" aria-pressed="true">Sunniest</button><button class="btn" data-k="dullest">Dullest</button><button class="btn" data-k="wettest">Wettest</button><button class="btn" data-k="driest">Driest</button></div><div class="seg"><button class="btn" data-g="cities" aria-pressed="true">Big cities</button><button class="btn" data-g="countries">Countries</button></div></div>
+<div class="tablewrap"><table class="t" id="rank"></table></div>
+<p class="src">Big cities: GeoNames places with a million people or more (573). GeoNames lists some districts of large cities separately, so a few names repeat a city's weather. Countries: area-weighted means over cells inside Natural Earth outlines, countries with 20,000 km² of land or more.</p>
+
+<h2><span class="n">06 · Seasons</span>When the sun and the rain arrive</h2>
+<p>Annual totals hide the calendar. In London the sun follows the length of the day, peaking at 192 hours in June. In Mumbai the monsoon turns that upside down: July brings 959 mm of rain and only 90 hours of sun, while May, before the rains, has 304. Across the tropics the sunniest month falls outside the local summer half of the year on 63% of the land; outside the tropics it does so on only 3%. Use the month menu above the map to watch the monsoon move.</p>
+<div class="figure">
+  <p class="fig-h">Twelve months of sun and rain in six cities</p>
+  <div class="legend"><span><i style="background:var(--hot)"></i>sunshine, hours (left scale)</span><span><i class="bar" style="background:var(--cool);opacity:.7"></i>rain, mm (right scale)</span></div>
+  <div class="multiples" id="multiples"></div>
+</div>
+
+<h2><span class="n">07 · Checking</span>How far to trust the grid</h2>
+<p>The rain in CRU CL 2.0 rests on many thousands of gauges; the sunshine on far fewer stations, and where sunshine was not recorded the authors converted cloud cover to sunshine (New et al. 2002). In much of Africa, South America, central Asia and the high Arctic, the sunshine surface is interpolated across wide gaps, and the 10-minute cells smooth mountains and coasts. So read single cells as indicative, and patterns as the story.</p>
+<p>For rain I could check. WorldClim 2.1 is a separate climatology for 1970 to 2000 built with different methods. Across 566,058 shared cells the two agree closely (Pearson's r = 0.977); the median cell differs by 28 mm a year, about 6%, and the rain tercile is the same on 94% of the land. There is no second sunshine grid on hand to compare, which is the main weakness of the map.</p>
+
+<div class="note">
+<h3>Method and caveats</h3>
+<p><b>Data.</b> CRU CL 2.0 (New, Lister, Hulme and Makin 2002): mean monthly sunshine as a percentage of the maximum possible, and mean monthly precipitation, 1961 to 1990, on a 10 arc-minute grid over land outside Antarctica (566,262 cells with both). The station network behind them is uneven and sunshine is the thinner of the two.</p>
+<p><b>Sunshine hours.</b> Hours = percentage ÷ 100 × astronomical day length × days in the month. Day length is the FAO-56 formula (Allen et al. 1998) for each day, averaged over the month, at each cell's latitude. It counts the sun from rising to setting, so it is a little longer than the time a sunshine recorder can register; CRU's percentages are relative to day length, so the conversion follows their definition.</p>
+<p><b>Classes.</b> Equal land breaks are weighted quantiles of the cells, weighted by cell area, recomputed for whichever period you choose. Fixed breaks are 2,000 and 3,000 hours and 500 and 1,000 mm a year (3 × 3), scaled by the length of a season or month. The colours come from four corners mixed in the OKLab colour space.</p>
+<p><b>Places.</b> GeoNames cities of 15,000 people or more (34,167 matched), each given the nearest land cell (median 6.7 km away). Coastal and island cities can pick up a cell a few kilometres inland. "People" means the GeoNames populations of these places, not everyone; GeoNames lists some city districts alongside their city, so a few people are counted twice.</p>
+<p><b>Weather twins.</b> For each month, the difference in sunshine hours and in the square root of rain, each divided by its spread across all land and months (80 hours; 4.5 root-mm), then the root mean square over twelve months. A score of 0 is identical; the default limit is 0.5. The flip option also compares each place with the other's months shifted by six.</p>
+<p><b>On the page.</b> The monthly grids are stored as images, sunshine to the nearest 2 hours a month and rain on a square-root scale. The largest error this adds to a cell's yearly total is 9 hours of sun and 25 mm of rain, so the map's class edges can differ from exact values by a whisker. City totals in the cards and tables are exact.</p>
+<p><b>Not covered.</b> 1961 to 1990 is a past climate; sunshine has changed since in places (for example with cleaner air in Europe). There is no temperature, humidity or rain intensity here. Ten-minute cells are about 18 km across at the equator: no valleys, no sea breezes.</p>
+</div>
+
+<div class="cta"><a class="p" href="https://doi.org/10.5281/zenodo.23732580">Read the paper</a><a href="https://github.com/Tristan-Hotham/sun-and-rain">Data and code</a><a href="https://blog.tristanhotham.com/2026/10/28/sun-and-rain/">Blog post</a></div>
+
+<details><summary>Sources and licences</summary>
+<p class="src">Climate: CRU CL 2.0, Climatic Research Unit, University of East Anglia, New, M., Lister, D., Hulme, M. and Makin, I. (2002) A high-resolution data set of surface climate over global land areas. Climate Research 21: 1 to 25. No licence is stated with the files; I publish derived grids and aggregates with this citation. Cross-check: WorldClim 2.1, Fick, S.E. and Hijmans, R.J. (2017) WorldClim 2. International Journal of Climatology 37(12): 4302 to 4315 (only summary statistics are published here). Places: GeoNames cities15000 (CC BY 4.0). Country outlines: Natural Earth 1:10m (public domain). Day length: Allen, R.G., Pereira, L.S., Raes, D. and Smith, M. (1998) Crop evapotranspiration, FAO Irrigation and Drainage Paper 56. Base map tiles © Esri, HERE, Garmin, © OpenStreetMap contributors, and the GIS user community.</p>
+</details>
+
+<footer>
+  <p>Dr Tristan Hotham, Independent researcher. ORCID 0000-0003-4931-9349. Cite as: Hotham, T. (2026) Sun and rain: the world's sunshine against its rainfall. https://doi.org/10.5281/zenodo.23732580</p>
+  <p>I wrote the text, with drafting and editing assistance from Claude (Anthropic), which also helped prepare the analysis code. I reviewed and checked all text and results.</p>
+  <p>Text and figures: CC BY 4.0. Code: MIT. Derived data: CC BY 4.0, with the credits above. Other studies: <a href="https://tristan-hotham.github.io/pleasant-months/">Pleasant months</a>, <a href="https://tristan-hotham.github.io/postbox-kings/">Postbox kings</a>, <a href="https://blog.tristanhotham.com/">all posts</a>.</p>
+</footer>
+</div>
+<div class="tip" id="tip"></div>
+<button class="btn theme" id="theme" aria-label="Toggle dark mode">◐</button>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+/* bivariate.js: shared bivariate map logic for the "Sun and rain" pages (world and UK).
+   No dependencies. Exposes window.BV. Mirrors code/bivariate.py (same corners, same OKLab interpolation).
+
+   Conventions: axis A (i, columns) = sunshine, 0 = dull ... n-1 = sunny; axis B (j, rows) = rain, 0 = dry ... n-1 = wet.
+   Values are per cell in plain typed arrays (one entry per data cell); a cell also has a pixel index in a source raster.
+
+   Main pieces:
+     BV.palette(n, corners)              n x n colours, P[i][j] = {hex, rgb:[r,g,b]}
+     BV.quantileBreaks(v, w, n, tf)      weighted quantile breaks (equal area per class); tf optional transform for binning
+     BV.classOf(x, breaks)               class index
+     BV.paint(img, pix, a, b, ba, bb, P, opt)  write classed colours into an ImageData (opt.only=[i,j], opt.mask, opt.dim)
+     BV.mercatorRows(H, W, latTop, latBot, srcLatTop, srcRowDeg)  row lookup to reproject a lat/lon raster to Web Mercator
+     BV.reproject(srcCanvas, outCanvas, rows)   draw the reprojected raster
+     BV.legend(el, n, P, opt)            SVG legend with corner words; hover or tap a cell to isolate a class
+     BV.breakSlider(el, opt)             histogram with draggable class breaks
+     BV.distance(sunA, rainA, sun, rain, ncell, sd, flip)  RMS distance between 12-month profiles (sqrt rain)
+*/
+(function () {
+  "use strict";
+  const BV = {};
+  BV.CORNERS = { dull_dry: "#EDE8DF", sunny_dry: "#EB8A2E", dull_wet: "#2E8F8C", sunny_wet: "#3B1D47" };
+  BV.CORNER_LABELS = { dull_dry: "dull and dry", sunny_dry: "sunny and dry", dull_wet: "dull and wet", sunny_wet: "sunny and wet" };
+
+  const s2l = c => (c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4));
+  const l2s = c => { c = Math.min(1, Math.max(0, c)); return c <= 0.0031308 ? 12.92 * c : 1.055 * Math.pow(c, 1 / 2.4) - 0.055; };
+  function hex2rgb(h) { h = h.replace("#", ""); return [0, 2, 4].map(k => parseInt(h.slice(k, k + 2), 16) / 255); }
+  function toLab(rgb) {
+    const [r, g, b] = rgb.map(s2l);
+    const l = Math.cbrt(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b);
+    const m = Math.cbrt(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b);
+    const s = Math.cbrt(0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b);
+    return [0.2104542553 * l + 0.7936177850 * m - 0.0040720468 * s, 1.9779984951 * l - 2.4285922050 * m + 0.4505937099 * s,
+      0.0259040371 * l + 0.7827717662 * m - 0.8086757660 * s];
+  }
+  function fromLab([L, a, b]) {
+    const l = Math.pow(L + 0.3963377774 * a + 0.2158037573 * b, 3), m = Math.pow(L - 0.1055613458 * a - 0.0638541728 * b, 3),
+      s = Math.pow(L - 0.0894841775 * a - 1.2914855480 * b, 3);
+    return [4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s, -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s,
+      -0.0041960863 * l - 0.7034186147 * m + 1.7076147010 * s].map(l2s);
+  }
+  const toHex = rgb => "#" + rgb.map(c => Math.round(c).toString(16).padStart(2, "0")).join("").toUpperCase();
+
+  BV.palette = function (n, corners) {
+    corners = corners || BV.CORNERS;
+    const c00 = toLab(hex2rgb(corners.dull_dry)), c10 = toLab(hex2rgb(corners.sunny_dry)),
+      c01 = toLab(hex2rgb(corners.dull_wet)), c11 = toLab(hex2rgb(corners.sunny_wet));
+    const P = [];
+    for (let i = 0; i < n; i++) {
+      const u = i / (n - 1), row = [];
+      for (let j = 0; j < n; j++) {
+        const v = j / (n - 1), lab = [0, 1, 2].map(k => (1 - u) * (1 - v) * c00[k] + u * (1 - v) * c10[k] + (1 - u) * v * c01[k] + u * v * c11[k]);
+        const rgb = fromLab(lab).map(c => Math.round(c * 255));
+        row.push({ rgb, hex: toHex(rgb) });
+      }
+      P.push(row);
+    }
+    return P;
+  };
+  // words for a class: corners named, edges and middle described
+  BV.classWords = function (i, j, n) {
+    const s = i === 0 ? "dull" : i === n - 1 ? "sunny" : (n === 3 ? "middling sun" : (i === 1 ? "fairly dull" : "fairly sunny"));
+    const r = j === 0 ? "dry" : j === n - 1 ? "wet" : (n === 3 ? "middling rain" : (j === 1 ? "fairly dry" : "fairly wet"));
+    if (n === 3 && i === 1 && j === 1) return "middling sun and rain";
+    return s + " and " + r;
+  };
+
+  BV.quantileBreaks = function (v, w, n, tf, nb) {
+    tf = tf || (x => x); nb = nb || 20000;
+    let lo = Infinity, hi = -Infinity;
+    for (let k = 0; k < v.length; k++) { const t = tf(v[k]); if (t < lo) lo = t; if (t > hi) hi = t; }
+    const h = new Float64Array(nb + 1), sc = nb / (hi - lo || 1); let tot = 0;
+    for (let k = 0; k < v.length; k++) { const wk = w ? w[k] : 1; h[Math.floor((tf(v[k]) - lo) * sc)] += wk; tot += wk; }
+    const out = []; let acc = 0, q = 1;
+    for (let b = 0; b <= nb && q < n; b++) {
+      acc += h[b];
+      while (q < n && acc >= tot * q / n) { out.push(lo + (b + 1) / sc); q++; }
+    }
+    return out; // in transformed units; the caller inverts tf
+  };
+  BV.classOf = function (x, br) { let c = 0; while (c < br.length && x >= br[c]) c++; return c; };
+
+  BV.paint = function (img, pix, a, b, ba, bb, P, opt) {
+    opt = opt || {};
+    const d = img.data, n = P.length, only = opt.only, mask = opt.mask, dim = opt.dim || [222, 219, 212, 150];
+    const flat = []; for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) flat[i * n + j] = P[i][j].rgb;
+    d.fill(0);
+    for (let k = 0; k < pix.length; k++) {
+      const i = BV.classOf(a[k], ba), j = BV.classOf(b[k], bb), o = pix[k] * 4;
+      let on = true;
+      if (only && (only[0] !== i || only[1] !== j)) on = false;
+      if (mask && !mask[k]) on = false;
+      if (on) { const c = flat[i * n + j]; d[o] = c[0]; d[o + 1] = c[1]; d[o + 2] = c[2]; d[o + 3] = 255; }
+      else { d[o] = dim[0]; d[o + 1] = dim[1]; d[o + 2] = dim[2]; d[o + 3] = dim[3]; }
+    }
+    return img;
+  };
+
+  // Reprojection of a regular lat/lon raster (row 0 at srcLatTop, srcRowDeg degrees per row) to Web Mercator rows
+  BV.mercY = lat => Math.log(Math.tan(Math.PI / 4 + lat * Math.PI / 360));
+  BV.mercatorRows = function (W, latTop, latBot, srcLatTop, srcRowDeg) {
+    const y0 = BV.mercY(latTop), y1 = BV.mercY(latBot), H = Math.round(W / (2 * Math.PI) * (y0 - y1)), rows = new Int32Array(H);
+    for (let y = 0; y < H; y++) {
+      const my = y0 - (y + 0.5) / H * (y0 - y1), lat = (2 * Math.atan(Math.exp(my)) - Math.PI / 2) * 180 / Math.PI;
+      rows[y] = Math.floor((srcLatTop - lat) / srcRowDeg);
+    }
+    return rows;
+  };
+  BV.reproject = function (src, out, rows) {
+    const ctx = out.getContext("2d"), W = out.width;
+    ctx.imageSmoothingEnabled = false; ctx.clearRect(0, 0, W, out.height);
+    let y = 0;
+    while (y < rows.length) {           // draw runs of output rows that share a source row in one call
+      let z = y; while (z + 1 < rows.length && rows[z + 1] === rows[y]) z++;
+      if (rows[y] >= 0 && rows[y] < src.height) ctx.drawImage(src, 0, rows[y], src.width, 1, 0, y, W, z - y + 1);
+      y = z + 1;
+    }
+  };
+
+  const NS = "http://www.w3.org/2000/svg";
+  const el = (t, a, p) => { const e = document.createElementNS(NS, t); for (const k in a) e.setAttribute(k, a[k]); if (p) p.appendChild(e); return e; };
+  BV.el = el;
+
+  // Legend: square grid, sunshine to the right, rain upwards, corner words. opt.onHover(i,j|null), opt.onClick(i,j), opt.labelA/B
+  BV.legend = function (host, n, P, opt) {
+    opt = opt || {};
+    host.innerHTML = "";
+    const cs = n === 3 ? 46 : 36, g = n * cs, L = 78, T = 26, Wd = L + g + 82, Hd = T + g + 54;
+    const svg = el("svg", { viewBox: `0 0 ${Wd} ${Hd}`, width: Wd, height: Hd, role: "group", "aria-label": "Map legend" }, host);
+    let pinned = null;
+    const cells = [];
+    for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) {
+      const r = el("rect", { x: L + i * cs, y: T + (n - 1 - j) * cs, width: cs - 2, height: cs - 2, fill: P[i][j].hex, tabindex: 0,
+        class: "bvcell", "aria-label": BV.classWords(i, j, n) }, svg);
+      r.style.cursor = "pointer"; cells.push(r);
+      el("title", {}, r).textContent = BV.classWords(i, j, n) + (opt.share ? " (" + opt.share(i, j) + ")" : "");
+      const enter = () => { if (pinned === null) { mark(i, j); opt.onHover && opt.onHover(i, j); } };
+      const leave = () => { if (pinned === null) { mark(null); opt.onHover && opt.onHover(null); } };
+      r.addEventListener("mouseenter", enter); r.addEventListener("mouseleave", leave);
+      r.addEventListener("focus", enter); r.addEventListener("blur", leave);
+      r.addEventListener("click", e => {
+        e.stopPropagation();
+        if (pinned && pinned[0] === i && pinned[1] === j) { pinned = null; mark(null); opt.onHover && opt.onHover(null); }
+        else { pinned = [i, j]; mark(i, j); opt.onHover && opt.onHover(i, j); }
+      });
+    }
+    function mark(i, j) {
+      cells.forEach((r, k) => {
+        const on = i === null || i === undefined || (Math.floor(k / n) === i && k % n === j);
+        r.setAttribute("opacity", on ? 1 : 0.35);
+        r.setAttribute("stroke", i !== null && i !== undefined && on ? "var(--fg)" : "none"); r.setAttribute("stroke-width", 2);
+      });
+    }
+    const tx = (x, y, s, a) => { const t = el("text", Object.assign({ x, y, class: "lab" }, a || {}), svg); t.textContent = s; return t; };
+    tx(L - 6, T + g - 4, "dull", { "text-anchor": "end", class: "lab m" }); tx(L - 6, T + g + 10, "and dry", { "text-anchor": "end", class: "lab m" });
+    tx(L - 6, T + 12, "dull", { "text-anchor": "end", class: "lab m" }); tx(L - 6, T + 26, "and wet", { "text-anchor": "end", class: "lab m" });
+    tx(L + g + 4, T + 12, "sunny", { class: "lab m" }); tx(L + g + 4, T + 26, "and wet", { class: "lab m" });
+    tx(L + g + 4, T + g - 4, "sunny", { class: "lab m" }); tx(L + g + 4, T + g + 10, "and dry", { class: "lab m" });
+    el("path", { d: `M${L} ${T + g + 22}H${L + g - 2}m-6 -4l6 4l-6 4`, stroke: "currentColor", fill: "none", class: "ax" }, svg);
+    tx(L + g / 2, T + g + 40, opt.labelA || "more sunshine", { "text-anchor": "middle", class: "lab b" });
+    el("path", { d: `M${L - 64} ${T + g - 2}V${T + 30}m-4 6l4 -6l4 6`, stroke: "currentColor", fill: "none", class: "ax" }, svg);
+    const tb = tx(0, 0, opt.labelB || "more rain", { "text-anchor": "middle", class: "lab b", transform: `translate(${L - 70} ${T + g / 2 + 18}) rotate(-90)` });
+    svg.style.color = "var(--muted)";
+    return { clear: () => { pinned = null; mark(null); }, mark };
+  };
+
+  // Histogram with draggable breaks. opt: {hist:[{x0,x1,w}], breaks:[], colors:[], fmt, onChange(breaks, done), scale:'lin'|'sqrt', min, max, label}
+  BV.breakSlider = function (host, opt) {
+    host.innerHTML = "";
+    const W = opt.width || 300, H = opt.height || 92, ml = 8, mr = 8, mt = 16, mb = 22, iw = W - ml - mr, ih = H - mt - mb;
+    const tf = opt.scale === "sqrt" ? Math.sqrt : (x => x), inv = opt.scale === "sqrt" ? (x => x * x) : (x => x);
+    const t0 = tf(opt.min), t1 = tf(opt.max);
+    const X = v => ml + (tf(Math.min(Math.max(v, opt.min), opt.max)) - t0) / (t1 - t0) * iw;
+    const V = x => inv(t0 + (x - ml) / iw * (t1 - t0));
+    const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, class: "bslider", role: "group", "aria-label": opt.label }, host);
+    const gb = el("g", {}, svg), gh = el("g", {}, svg);
+    let br = opt.breaks.slice();
+    const wmax = Math.max(...opt.hist.map(h => h.w / Math.max(1e-9, X(h.x1) - X(h.x0))));
+    const cap = document.createElement("div"); cap.className = "bvvals"; host.appendChild(cap);
+    function draw() {
+      cap.textContent = "Breaks at " + br.map(b => opt.fmt(b)).join(", ");
+      gb.innerHTML = "";
+      const edges = [opt.min].concat(br, [opt.max]);
+      opt.hist.forEach(h => {
+        const x0 = X(h.x0), x1 = X(h.x1); if (x1 - x0 < .2) return;
+        const mid = (h.x0 + h.x1) / 2; let c = 0; while (c < br.length && mid >= br[c]) c++;
+        const hh = h.w / (x1 - x0) / wmax * ih;
+        el("rect", { x: x0, y: mt + ih - hh, width: Math.max(.5, x1 - x0 - .4), height: hh, fill: opt.colors[c] }, gb);
+      });
+      el("line", { x1: ml, x2: ml + iw, y1: mt + ih + .5, y2: mt + ih + .5, stroke: "var(--muted)" }, gb);
+      (opt.ticks || []).forEach(t => {
+        el("line", { x1: X(t), x2: X(t), y1: mt + ih, y2: mt + ih + 4, stroke: "var(--muted)" }, gb);
+        const tt = el("text", { x: X(t), y: mt + ih + 16, "text-anchor": "middle", class: "lab s m" }, gb); tt.textContent = opt.fmt(t, true);
+      });
+      gh.innerHTML = "";
+      br.forEach((b, k) => {
+        const x = X(b), g = el("g", { class: "hdl", tabindex: 0, role: "slider", "aria-label": opt.label + " break " + (k + 1), "aria-valuenow": Math.round(b) }, gh);
+        el("line", { x1: x, x2: x, y1: mt - 4, y2: mt + ih, stroke: "var(--fg)", "stroke-width": 2 }, g);
+        el("rect", { x: x - 9, y: mt - 20, width: 18, height: ih + 22, fill: "transparent" }, g);
+        el("circle", { cx: x, cy: mt - 7, r: 7, fill: "var(--card)", stroke: "var(--fg)", "stroke-width": 2 }, g);
+        g.style.cursor = "ew-resize";
+        g.addEventListener("pointerdown", e => start(e, k));
+        g.addEventListener("keydown", e => {
+          const step = (opt.max - opt.min) / 100 * (e.shiftKey ? 5 : 1);
+          if (e.key === "ArrowLeft" || e.key === "ArrowDown") move(k, br[k] - step, true);
+          else if (e.key === "ArrowRight" || e.key === "ArrowUp") move(k, br[k] + step, true);
+          else return;
+          e.preventDefault();
+        });
+      });
+    }
+    function move(k, v, done) {
+      const lo = k ? br[k - 1] : opt.min, hi = k < br.length - 1 ? br[k + 1] : opt.max, gap = (opt.max - opt.min) / 200;
+      br[k] = Math.min(hi - gap, Math.max(lo + gap, v));
+      if (opt.round) br[k] = opt.round(br[k]);
+      draw(); opt.onChange(br.slice(), done);
+      const h = gh.children[k]; if (h && done) h.focus();
+    }
+    function start(e, k) {
+      e.preventDefault();
+      const pt = svg.createSVGPoint();
+      const mv = ev => { pt.x = ev.clientX; pt.y = ev.clientY; const p = pt.matrixTransform(svg.getScreenCTM().inverse()); move(k, V(p.x), false); };
+      const up = () => { window.removeEventListener("pointermove", mv); window.removeEventListener("pointerup", up); opt.onChange(br.slice(), true); };
+      window.addEventListener("pointermove", mv); window.addEventListener("pointerup", up);
+    }
+    draw();
+    return { set: (b, colors) => { br = b.slice(); if (colors) opt.colors = colors; draw(); }, get: () => br.slice() };
+  };
+
+  // RMS distance over 12 months between one profile and every cell; sun and rain arrays are cell-major (cell*12 + month)
+  BV.distance = function (sA, rA, sun, rain, ncell, sd, flip) {
+    const out = new Float32Array(ncell), rq = rA.map(Math.sqrt), sF = [], rF = [];
+    for (let m = 0; m < 12; m++) { sF[m] = sA[(m + 6) % 12]; rF[m] = rq[(m + 6) % 12]; }
+    for (let k = 0; k < ncell; k++) {
+      let d1 = 0, d2 = 0; const o = k * 12;
+      for (let m = 0; m < 12; m++) {
+        const s = sun[o + m], r = Math.sqrt(rain[o + m]);
+        const a = (s - sA[m]) / sd[0], b = (r - rq[m]) / sd[1]; d1 += a * a + b * b;
+        if (flip) { const c = (s - sF[m]) / sd[0], e = (r - rF[m]) / sd[1]; d2 += c * c + e * e; }
+      }
+      out[k] = Math.sqrt((flip ? Math.min(d1, d2) : d1) / 12);
+    }
+    return out;
+  };
+
+  window.BV = BV;
+})();
+
+</script>
+<script>
+const R = {"meta":{"cells":566262,"area_km2":137075583.1958,"lat_min":-59.0833,"lat_max":83.5833,"n_sun_rows":566262,"n_pre_rows":566268,"cities":34167,"city_pop":4076103891.0,"period":"1961 to 1990","crossval_period":"1970 to 2000","cities_unmatched":24,"city_cell_km_median":6.7,"city_cell_km_p95":10.5,"cells_no_country":1065},"sun":{"min":309.7429,"max":4027.073,"p01":1200.3158,"p10":1642.3839,"q1":1927.932,"t1":2086.1975,"median":2474.3124,"t2":2794.0932,"q3":2968.3708,"p90":3354.5284,"p99":3725.398,"mean":2464.7504},"rain":{"min":0.0,"max":9699.9001,"p01":7.2,"p10":109.4,"q1":274.4,"t1":365.4,"median":553.0,"t2":868.4,"q3":1130.3,"p90":1848.7,"p99":3276.1,"mean":803.8446,"dry_area_share_lt50":0.056},"corr":{"spearman":-0.2361},"extremes":{"sunniest":{"lat":20.75,"lon":32.5833,"sun":4027.073,"rain":6.6,"near":"Wadi Halfa","near_country":"Sudan","near_km":164.5682},"dullest":{"lat":-59.0833,"lon":-26.5833,"sun":309.7429,"rain":1599.7,"near":"Grytviken","near_country":"South Georgia and the South Sandwich Islands","near_km":784.4058},"wettest":{"lat":25.4167,"lon":91.4167,"sun":2197.8021,"rain":9699.9001,"near":"Nongstoin","near_country":"India","near_km":24.9711}},"breaks":{"fixed3":{"sun":[2000,3000],"rain":[500,1000]},"fixed4":{"sun":[1750,2500,3250],"rain":[250,750,1500]},"quant3":{"sun":[2086.1975,2794.0932],"rain":[365.4,868.4]},"quant4":{"sun":[1927.932,2474.3124,2968.3708],"rain":[274.4,553.0,1130.3]}},"matrix":{"fixed3_area":[[0.1022,0.0923,0.0949],[0.1529,0.1319,0.1912],[0.1991,0.0316,0.0039]],"quant3_area":[[0.0729,0.1359,0.1245],[0.0507,0.104,0.1786],[0.2098,0.0933,0.0302]],"fixed3_pop":[[0.0056,0.1092,0.2102],[0.0827,0.2153,0.2756],[0.0725,0.0235,0.0053]],"quant3_pop":[[0.004,0.1122,0.2609],[0.017,0.153,0.2583],[0.0765,0.084,0.0341]]},"corners":{"sunny_dry":0.1991,"sunny_wet":0.0039,"dull_dry":0.1022,"dull_wet":0.0949},"corners_q":{"sunny_dry":0.2098,"sunny_wet":0.0302,"dull_dry":0.0729,"dull_wet":0.1245,"middle":0.104},"corners_q_pop":{"sunny_dry":0.0765,"sunny_wet":0.0341,"dull_dry":0.004,"dull_wet":0.2609,"middle":0.153},"corners_pop":{"sunny_dry":0.0725,"sunny_wet":0.0053,"dull_dry":0.0056,"dull_wet":0.2102},"countries":{"n":212,"n_big":156,"sunniest":[{"country":"Egypt","sun_h":3658,"rain_mm":25},{"country":"Libya","sun_h":3565,"rain_mm":43},{"country":"Jordan","sun_h":3497,"rain_mm":118},{"country":"Iraq","sun_h":3436,"rain_mm":206},{"country":"United Arab Emirates","sun_h":3423,"rain_mm":67},{"country":"Sudan","sun_h":3416,"rain_mm":241},{"country":"Chad","sun_h":3409,"rain_mm":344},{"country":"Algeria","sun_h":3396,"rain_mm":88}],"dullest":[{"country":"Iceland","sun_h":1040,"rain_mm":1077},{"country":"Ireland","sun_h":1236,"rain_mm":1144},{"country":"Norway","sun_h":1248,"rain_mm":959},{"country":"United Kingdom","sun_h":1319,"rain_mm":1121},{"country":"Greenland","sun_h":1327,"rain_mm":439},{"country":"Ecuador","sun_h":1345,"rain_mm":1956},{"country":"Finland","sun_h":1401,"rain_mm":564},{"country":"Sweden","sun_h":1403,"rain_mm":614}],"wettest":[{"country":"Solomon Islands","sun_h":2037,"rain_mm":3191},{"country":"Papua New Guinea","sun_h":1894,"rain_mm":3106},{"country":"Costa Rica","sun_h":2229,"rain_mm":2992},{"country":"Malaysia","sun_h":2191,"rain_mm":2840},{"country":"Sierra Leone","sun_h":2036,"rain_mm":2692},{"country":"Indonesia","sun_h":2194,"rain_mm":2687},{"country":"Colombia","sun_h":1734,"rain_mm":2597},{"country":"Equatorial Guinea","sun_h":1416,"rain_mm":2504}],"driest":[{"country":"Egypt","sun_h":3658,"rain_mm":25},{"country":"Libya","sun_h":3565,"rain_mm":43},{"country":"Western Sahara","sun_h":3178,"rain_mm":47},{"country":"United Arab Emirates","sun_h":3423,"rain_mm":67},{"country":"Oman","sun_h":3248,"rain_mm":72},{"country":"Algeria","sun_h":3396,"rain_mm":88},{"country":"Saudi Arabia","sun_h":3384,"rain_mm":104},{"country":"Mauritania","sun_h":3196,"rain_mm":107}],"uk_sun_rank":153,"uk_rain_rank":64},"uk":{"cells":1315,"sun_mean":1318.7859,"rain_mean":1121.1013,"sun_max":1773.9786,"sun_min":939.0698,"rain_max":3300.4,"rain_min":528.0,"sunniest":{"lat":50.75,"lon":-0.75,"sun":1773.9786,"rain":749.4,"near":"Bognor Regis","near_country":"United Kingdom","near_km":0.0},"dullest":{"lat":57.5833,"lon":-5.25,"sun":939.0698,"rain":2341.3,"near":"Inverness","near_country":"United Kingdom","near_km":62.4247},"wettest":{"lat":56.25,"lon":-4.9167,"sun":1108.2842,"rain":3300.4,"near":"Greenock","near_country":"United Kingdom","near_km":38.4666},"driest":{"lat":51.5833,"lon":0.9167,"sun":1568.8569,"rain":528.0,"near":"Southend-on-Sea","near_country":"United Kingdom","near_km":11.5162},"sun_rank":153,"rain_rank":64,"n_big":156,"land_sunnier_than_uk_max":0.8359,"land_sunnier_than_uk_mean":0.9772,"land_wetter_than_uk_mean":0.2529,"uk_sunmax_pct":0.1641,"class_fixed3":{"01":0.5257,"02":0.4743},"dull_tercile_share":1.0,"sun_month":[43.0414,64.1894,100.4319,141.0564,178.2829,177.8474,163.0286,155.3311,117.3072,85.5919,55.0204,37.6572],"rain_month":[116.7277,80.8422,94.297,67.1793,71.3096,71.7168,73.6242,90.776,103.1764,114.8766,117.1062,119.4693],"sunniest_city":{"name":"Portsmouth","sun_h":1746.0},"dullest_city":{"name":"Oldham","sun_h":1217.0},"wettest_city":{"name":"Plymouth","rain_mm":1301.0},"driest_city":{"name":"Southend-on-Sea","rain_mm":534.0}},"big":{"n":573,"min_pop":1000000,"sunniest":[{"name":"Phoenix","country":"United States of America","cc":"US","pop":1650070,"sun_h":3817.0,"rain_mm":198.0,"lat":33.4484,"lon":-112.074},{"name":"Ciudad Juárez","country":"Mexico","cc":"MX","pop":1512450,"sun_h":3673.0,"rain_mm":221.0,"lat":31.7202,"lon":-106.4608},{"name":"Mexicali","country":"Mexico","cc":"MX","pop":1032686,"sun_h":3649.0,"rain_mm":69.0,"lat":32.6278,"lon":-115.4545},{"name":"Madinah","country":"Saudi Arabia","cc":"SA","pop":1300000,"sun_h":3605.0,"rain_mm":61.0,"lat":24.4686,"lon":39.6142},{"name":"Karbala","country":"Iraq","cc":"IQ","pop":1218732,"sun_h":3588.0,"rain_mm":120.0,"lat":32.616,"lon":44.0249},{"name":"Khartoum North","country":"Sudan","cc":"SD","pop":1012211,"sun_h":3514.0,"rain_mm":148.0,"lat":15.6493,"lon":32.5346},{"name":"Khartoum","country":"Sudan","cc":"SD","pop":1974647,"sun_h":3514.0,"rain_mm":148.0,"lat":15.5518,"lon":32.5324},{"name":"Omdurman","country":"Sudan","cc":"SD","pop":1849659,"sun_h":3509.0,"rain_mm":141.0,"lat":15.6445,"lon":32.4777},{"name":"Baghdad","country":"Iraq","cc":"IQ","pop":7216000,"sun_h":3475.0,"rain_mm":177.0,"lat":33.3406,"lon":44.4009},{"name":"Sadr City","country":"Iraq","cc":"IQ","pop":1211849,"sun_h":3475.0,"rain_mm":177.0,"lat":33.3889,"lon":44.4583}],"dullest":[{"name":"Guayaquil","country":"Ecuador","cc":"EC","pop":2723665,"sun_h":1154.0,"rain_mm":878.0,"lat":-2.1962,"lon":-79.8862},{"name":"Chongqing","country":"People's Republic of China","cc":"CN","pop":22000000,"sun_h":1199.0,"rain_mm":1094.0,"lat":29.5603,"lon":106.5577},{"name":"Zunyi","country":"People's Republic of China","cc":"CN","pop":2037775,"sun_h":1277.0,"rain_mm":1107.0,"lat":27.6867,"lon":106.9072},{"name":"Nanchong","country":"People's Republic of China","cc":"CN","pop":1858875,"sun_h":1292.0,"rain_mm":1038.0,"lat":30.7951,"lon":106.0847},{"name":"Chengdu","country":"People's Republic of China","cc":"CN","pop":20937757,"sun_h":1301.0,"rain_mm":955.0,"lat":30.6667,"lon":104.0667},{"name":"Neijiang","country":"People's Republic of China","cc":"CN","pop":1251095,"sun_h":1306.0,"rain_mm":1074.0,"lat":29.5835,"lon":105.0622},{"name":"Guiyang","country":"People's Republic of China","cc":"CN","pop":4506134,"sun_h":1308.0,"rain_mm":1147.0,"lat":26.5833,"lon":106.7167},{"name":"Birmingham","country":"United Kingdom","cc":"GB","pop":1157603,"sun_h":1356.0,"rain_mm":741.0,"lat":52.4814,"lon":-1.8998},{"name":"Zigong","country":"People's Republic of China","cc":"CN","pop":1262064,"sun_h":1362.0,"rain_mm":1167.0,"lat":29.3416,"lon":104.7769},{"name":"Port Harcourt","country":"Nigeria","cc":"NG","pop":2120000,"sun_h":1374.0,"rain_mm":2479.0,"lat":4.7774,"lon":7.0134}],"wettest":[{"name":"Bogor","country":"Indonesia","cc":"ID","pop":1078351,"sun_h":2626.0,"rain_mm":4020.0,"lat":-6.5944,"lon":106.7892},{"name":"Conakry","country":"Guinea","cc":"GN","pop":1928389,"sun_h":2187.0,"rain_mm":3552.0,"lat":9.538,"lon":-13.6773},{"name":"Camayenne","country":"Guinea","cc":"GN","pop":1871242,"sun_h":2187.0,"rain_mm":3552.0,"lat":9.535,"lon":-13.6878},{"name":"Douala","country":"Cameroon","cc":"CM","pop":1338082,"sun_h":1706.0,"rain_mm":3476.0,"lat":4.0483,"lon":9.7043},{"name":"Monrovia","country":"Liberia","cc":"LR","pop":1542549,"sun_h":1766.0,"rain_mm":3262.0,"lat":6.3005,"lon":-10.7969},{"name":"Makassar","country":"Indonesia","cc":"ID","pop":1474393,"sun_h":2848.0,"rain_mm":3249.0,"lat":-5.1486,"lon":119.4319},{"name":"Navi Mumbai","country":"India","cc":"IN","pop":2600000,"sun_h":2689.0,"rain_mm":3231.0,"lat":19.0368,"lon":73.0158},{"name":"Depok","country":"Indonesia","cc":"ID","pop":2163635,"sun_h":2668.0,"rain_mm":2952.0,"lat":-6.4,"lon":106.8186},{"name":"Jepara","country":"Indonesia","cc":"ID","pop":1257912,"sun_h":2764.0,"rain_mm":2867.0,"lat":-6.5924,"lon":110.671},{"name":"Dombivali","country":"India","cc":"IN","pop":1247327,"sun_h":2702.0,"rain_mm":2853.0,"lat":19.2167,"lon":73.0833}],"driest":[{"name":"Trujillo","country":"Peru","cc":"PE","pop":1067700,"sun_h":1934.0,"rain_mm":15.0,"lat":-8.116,"lon":-79.03},{"name":"Callao","country":"Peru","cc":"PE","pop":1226200,"sun_h":1507.0,"rain_mm":17.0,"lat":-12.0516,"lon":-77.1345},{"name":"Lima","country":"Peru","cc":"PE","pop":7737002,"sun_h":1507.0,"rain_mm":17.0,"lat":-12.0432,"lon":-77.0282},{"name":"Giza","country":"Egypt","cc":"EG","pop":4367343,"sun_h":3331.0,"rain_mm":21.0,"lat":30.0094,"lon":31.2086},{"name":"Shubrā al Khaymah","country":"Egypt","cc":"EG","pop":1240289,"sun_h":3331.0,"rain_mm":21.0,"lat":30.1251,"lon":31.2505},{"name":"Cairo","country":"Egypt","cc":"EG","pop":9606916,"sun_h":3331.0,"rain_mm":21.0,"lat":30.0626,"lon":31.2497},{"name":"Aden","country":"Yemen","cc":"YE","pop":1079670,"sun_h":3134.0,"rain_mm":57.0,"lat":12.7796,"lon":45.0385},{"name":"Abu Dhabi","country":"United Arab Emirates","cc":"AE","pop":1807000,"sun_h":3444.0,"rain_mm":59.0,"lat":24.4512,"lon":54.397},{"name":"Madinah","country":"Saudi Arabia","cc":"SA","pop":1300000,"sun_h":3605.0,"rain_mm":61.0,"lat":24.4686,"lon":39.6142},{"name":"Jeddah","country":"Saudi Arabia","cc":"SA","pop":4697000,"sun_h":3319.0,"rain_mm":65.0,"lat":21.4901,"lon":39.1862}],"class_counts_q":{"02":169,"12":137,"11":91,"21":55,"01":48,"20":44,"22":17,"10":9,"00":3},"q_sunny_wet":[{"name":"Surabaya","country":"Indonesia","cc":"ID","pop":3018022,"sun_h":3244.0,"rain_mm":1596.0,"lat":-7.2492,"lon":112.7508},{"name":"Antalya","country":"Turkey","cc":"TR","pop":1335002,"sun_h":3106.0,"rain_mm":1026.0,"lat":36.9081,"lon":30.6956},{"name":"Cape Town","country":"South Africa","cc":"ZA","pop":4772846,"sun_h":2961.0,"rain_mm":1079.0,"lat":-33.9258,"lon":18.4232},{"name":"Havana","country":"Cuba","cc":"CU","pop":2163824,"sun_h":2948.0,"rain_mm":1332.0,"lat":23.133,"lon":-82.383},{"name":"Mombasa","country":"Kenya","cc":"KE","pop":1208333,"sun_h":2942.0,"rain_mm":1115.0,"lat":-4.0547,"lon":39.6636},{"name":"Bamako","country":"Mali","cc":"ML","pop":4227569,"sun_h":2933.0,"rain_mm":939.0,"lat":12.6091,"lon":-7.9752},{"name":"Harare","country":"Zimbabwe","cc":"ZW","pop":1542813,"sun_h":2929.0,"rain_mm":887.0,"lat":-17.8277,"lon":31.0534},{"name":"Vadodara","country":"India","cc":"IN","pop":1822221,"sun_h":2918.0,"rain_mm":1044.0,"lat":22.2994,"lon":73.2081},{"name":"Rawalpindi","country":"Pakistan","cc":"PK","pop":3357612,"sun_h":2890.0,"rain_mm":1160.0,"lat":33.5973,"lon":73.0479},{"name":"Surat","country":"India","cc":"IN","pop":4591246,"sun_h":2879.0,"rain_mm":1047.0,"lat":21.1959,"lon":72.8302},{"name":"Jacksonville","country":"United States of America","cc":"US","pop":1009833,"sun_h":2851.0,"rain_mm":1205.0,"lat":30.3322,"lon":-81.6556},{"name":"Indore","country":"India","cc":"IN","pop":1994397,"sun_h":2849.0,"rain_mm":964.0,"lat":22.7179,"lon":75.8333},{"name":"Makassar","country":"Indonesia","cc":"ID","pop":1474393,"sun_h":2848.0,"rain_mm":3249.0,"lat":-5.1486,"lon":119.4319},{"name":"Semarang","country":"Indonesia","cc":"ID","pop":1694740,"sun_h":2837.0,"rain_mm":2110.0,"lat":-6.9931,"lon":110.4208},{"name":"Brisbane","country":"Australia","cc":"AU","pop":2780063,"sun_h":2835.0,"rain_mm":1209.0,"lat":-27.4679,"lon":153.0281},{"name":"Addis Ababa","country":"Ethiopia","cc":"ET","pop":3860000,"sun_h":2830.0,"rain_mm":1259.0,"lat":9.025,"lon":38.7469},{"name":"Bhopal","country":"India","cc":"IN","pop":1798218,"sun_h":2800.0,"rain_mm":1185.0,"lat":23.2547,"lon":77.4029}],"q_sunny_dry":[{"name":"Phoenix","country":"United States of America","cc":"US","pop":1650070,"sun_h":3817.0,"rain_mm":198.0,"lat":33.4484,"lon":-112.074},{"name":"Ciudad Juárez","country":"Mexico","cc":"MX","pop":1512450,"sun_h":3673.0,"rain_mm":221.0,"lat":31.7202,"lon":-106.4608},{"name":"Mexicali","country":"Mexico","cc":"MX","pop":1032686,"sun_h":3649.0,"rain_mm":69.0,"lat":32.6278,"lon":-115.4545},{"name":"Madinah","country":"Saudi Arabia","cc":"SA","pop":1300000,"sun_h":3605.0,"rain_mm":61.0,"lat":24.4686,"lon":39.6142},{"name":"Karbala","country":"Iraq","cc":"IQ","pop":1218732,"sun_h":3588.0,"rain_mm":120.0,"lat":32.616,"lon":44.0249},{"name":"Khartoum North","country":"Sudan","cc":"SD","pop":1012211,"sun_h":3514.0,"rain_mm":148.0,"lat":15.6493,"lon":32.5346},{"name":"Khartoum","country":"Sudan","cc":"SD","pop":1974647,"sun_h":3514.0,"rain_mm":148.0,"lat":15.5518,"lon":32.5324},{"name":"Omdurman","country":"Sudan","cc":"SD","pop":1849659,"sun_h":3509.0,"rain_mm":141.0,"lat":15.6445,"lon":32.4777},{"name":"Baghdad","country":"Iraq","cc":"IQ","pop":7216000,"sun_h":3475.0,"rain_mm":177.0,"lat":33.3406,"lon":44.4009},{"name":"Sadr City","country":"Iraq","cc":"IQ","pop":1211849,"sun_h":3475.0,"rain_mm":177.0,"lat":33.3889,"lon":44.4583},{"name":"Dubai","country":"United Arab Emirates","cc":"AE","pop":3790000,"sun_h":3452.0,"rain_mm":90.0,"lat":25.0772,"lon":55.3093},{"name":"Abu Dhabi","country":"United Arab Emirates","cc":"AE","pop":1807000,"sun_h":3444.0,"rain_mm":59.0,"lat":24.4512,"lon":54.397},{"name":"Sharjah","country":"United Arab Emirates","cc":"AE","pop":1800000,"sun_h":3412.0,"rain_mm":105.0,"lat":25.3342,"lon":55.4122},{"name":"Riyadh","country":"Saudi Arabia","cc":"SA","pop":4205961,"sun_h":3364.0,"rain_mm":117.0,"lat":24.6877,"lon":46.7219},{"name":"Quetta","country":"Pakistan","cc":"PK","pop":1565546,"sun_h":3332.0,"rain_mm":262.0,"lat":30.1841,"lon":67.0014},{"name":"Cairo","country":"Egypt","cc":"EG","pop":9606916,"sun_h":3331.0,"rain_mm":21.0,"lat":30.0626,"lon":31.2497},{"name":"Shubrā al Khaymah","country":"Egypt","cc":"EG","pop":1240289,"sun_h":3331.0,"rain_mm":21.0,"lat":30.1251,"lon":31.2505},{"name":"Giza","country":"Egypt","cc":"EG","pop":4367343,"sun_h":3331.0,"rain_mm":21.0,"lat":30.0094,"lon":31.2086},{"name":"Jeddah","country":"Saudi Arabia","cc":"SA","pop":4697000,"sun_h":3319.0,"rain_mm":65.0,"lat":21.4901,"lon":39.1862},{"name":"Amman","country":"Jordan","cc":"JO","pop":1275857,"sun_h":3309.0,"rain_mm":332.0,"lat":31.9552,"lon":35.945},{"name":"Hyderabad","country":"Pakistan","cc":"PK","pop":1921275,"sun_h":3309.0,"rain_mm":173.0,"lat":25.3969,"lon":68.3772},{"name":"Dammam","country":"Saudi Arabia","cc":"SA","pop":1252523,"sun_h":3299.0,"rain_mm":88.0,"lat":26.4344,"lon":50.1033},{"name":"Shiraz","country":"Iran","cc":"IR","pop":1249942,"sun_h":3285.0,"rain_mm":303.0,"lat":29.6103,"lon":52.5311},{"name":"Makkah","country":"Saudi Arabia","cc":"SA","pop":1578722,"sun_h":3279.0,"rain_mm":74.0,"lat":21.4266,"lon":39.8256},{"name":"Alexandria","country":"Egypt","cc":"EG","pop":5263542,"sun_h":3258.0,"rain_mm":195.0,"lat":31.2018,"lon":29.9158},{"name":"Arequipa","country":"Peru","cc":"PE","pop":1195700,"sun_h":3244.0,"rain_mm":88.0,"lat":-16.399,"lon":-71.5375},{"name":"Tripoli","country":"Libya","cc":"LY","pop":1302947,"sun_h":3210.0,"rain_mm":288.0,"lat":32.8874,"lon":13.1873},{"name":"Isfahan","country":"Iran","cc":"IR","pop":1547164,"sun_h":3192.0,"rain_mm":123.0,"lat":32.6525,"lon":51.6746},{"name":"Aden","country":"Yemen","cc":"YE","pop":1079670,"sun_h":3134.0,"rain_mm":57.0,"lat":12.7796,"lon":45.0385},{"name":"Multan","country":"Pakistan","cc":"PK","pop":2169915,"sun_h":3075.0,"rain_mm":188.0,"lat":30.1968,"lon":71.4782},{"name":"San Diego","country":"United States of America","cc":"US","pop":1404452,"sun_h":3072.0,"rain_mm":262.0,"lat":32.7157,"lon":-117.1647},{"name":"Tijuana","country":"Mexico","cc":"MX","pop":1922523,"sun_h":3068.0,"rain_mm":230.0,"lat":32.5027,"lon":-117.0037},{"name":"Karachi","country":"Pakistan","cc":"PK","pop":11624219,"sun_h":3043.0,"rain_mm":203.0,"lat":24.8608,"lon":67.0104},{"name":"Basrah","country":"Iraq","cc":"IQ","pop":1326564,"sun_h":3039.0,"rain_mm":145.0,"lat":30.5085,"lon":47.7804},{"name":"Kabul","country":"Afghanistan","cc":"AF","pop":4434550,"sun_h":3032.0,"rain_mm":333.0,"lat":34.5281,"lon":69.1723},{"name":"Bayan Nur","country":"People's Republic of China","cc":"CN","pop":1760000,"sun_h":3007.0,"rain_mm":160.0,"lat":40.7414,"lon":107.386},{"name":"Bannu","country":"Pakistan","cc":"PK","pop":1357890,"sun_h":2991.0,"rain_mm":325.0,"lat":32.9853,"lon":70.604},{"name":"Faisalabad","country":"Pakistan","cc":"PK","pop":3800193,"sun_h":2980.0,"rain_mm":359.0,"lat":31.4155,"lon":73.0897},{"name":"Baotou","country":"People's Republic of China","cc":"CN","pop":2761700,"sun_h":2957.0,"rain_mm":310.0,"lat":40.6516,"lon":109.8439},{"name":"Tehran","country":"Iran","cc":"IR","pop":7153309,"sun_h":2920.0,"rain_mm":258.0,"lat":35.6944,"lon":51.4215},{"name":"Nouakchott","country":"Mauritania","cc":"MR","pop":1184530,"sun_h":2910.0,"rain_mm":113.0,"lat":18.0858,"lon":-15.9785},{"name":"Mashhad","country":"Iran","cc":"IR","pop":2307177,"sun_h":2879.0,"rain_mm":260.0,"lat":36.2981,"lon":59.6057},{"name":"Yinchuan","country":"People's Republic of China","cc":"CN","pop":2859074,"sun_h":2847.0,"rain_mm":199.0,"lat":38.4681,"lon":106.2731},{"name":"Wuwei","country":"People's Republic of China","cc":"CN","pop":1010295,"sun_h":2819.0,"rain_mm":172.0,"lat":37.9267,"lon":102.632}],"q_dull_dry":[{"name":"Lima","country":"Peru","cc":"PE","pop":7737002,"sun_h":1507.0,"rain_mm":17.0,"lat":-12.0432,"lon":-77.0282},{"name":"Callao","country":"Peru","cc":"PE","pop":1226200,"sun_h":1507.0,"rain_mm":17.0,"lat":-12.0516,"lon":-77.1345},{"name":"Trujillo","country":"Peru","cc":"PE","pop":1067700,"sun_h":1934.0,"rain_mm":15.0,"lat":-8.116,"lon":-79.03}],"q_dull_wet":[{"name":"Guayaquil","country":"Ecuador","cc":"EC","pop":2723665,"sun_h":1154.0,"rain_mm":878.0,"lat":-2.1962,"lon":-79.8862},{"name":"Chongqing","country":"People's Republic of China","cc":"CN","pop":22000000,"sun_h":1199.0,"rain_mm":1094.0,"lat":29.5603,"lon":106.5577},{"name":"Zunyi","country":"People's Republic of China","cc":"CN","pop":2037775,"sun_h":1277.0,"rain_mm":1107.0,"lat":27.6867,"lon":106.9072},{"name":"Nanchong","country":"People's Republic of China","cc":"CN","pop":1858875,"sun_h":1292.0,"rain_mm":1038.0,"lat":30.7951,"lon":106.0847},{"name":"Chengdu","country":"People's Republic of China","cc":"CN","pop":20937757,"sun_h":1301.0,"rain_mm":955.0,"lat":30.6667,"lon":104.0667},{"name":"Neijiang","country":"People's Republic of China","cc":"CN","pop":1251095,"sun_h":1306.0,"rain_mm":1074.0,"lat":29.5835,"lon":105.0622},{"name":"Guiyang","country":"People's Republic of China","cc":"CN","pop":4506134,"sun_h":1308.0,"rain_mm":1147.0,"lat":26.5833,"lon":106.7167},{"name":"Zigong","country":"People's Republic of China","cc":"CN","pop":1262064,"sun_h":1362.0,"rain_mm":1167.0,"lat":29.3416,"lon":104.7769},{"name":"Port Harcourt","country":"Nigeria","cc":"NG","pop":2120000,"sun_h":1374.0,"rain_mm":2479.0,"lat":4.7774,"lon":7.0134},{"name":"Dublin","country":"Ireland","cc":"IE","pop":1024027,"sun_h":1383.0,"rain_mm":1043.0,"lat":53.3331,"lon":-6.2489},{"name":"Mianyang","country":"People's Republic of China","cc":"CN","pop":1550000,"sun_h":1390.0,"rain_mm":951.0,"lat":31.4678,"lon":104.6817},{"name":"Dazhou","country":"People's Republic of China","cc":"CN","pop":1589435,"sun_h":1394.0,"rain_mm":1214.0,"lat":31.2106,"lon":107.4631},{"name":"Meishan","country":"People's Republic of China","cc":"CN","pop":1107742,"sun_h":1398.0,"rain_mm":1354.0,"lat":30.0439,"lon":103.837},{"name":"Wanzhou","country":"People's Republic of China","cc":"CN","pop":1545900,"sun_h":1406.0,"rain_mm":1253.0,"lat":30.7645,"lon":108.3959},{"name":"Bazhong","country":"People's Republic of China","cc":"CN","pop":2712894,"sun_h":1465.0,"rain_mm":1143.0,"lat":31.8694,"lon":106.7443},{"name":"Aba","country":"Nigeria","cc":"NG","pop":1160000,"sun_h":1489.0,"rain_mm":2399.0,"lat":5.1066,"lon":7.3667},{"name":"Bijie","country":"People's Republic of China","cc":"CN","pop":1137383,"sun_h":1523.0,"rain_mm":956.0,"lat":27.3019,"lon":105.2863},{"name":"Guilin","country":"People's Republic of China","cc":"CN","pop":1572300,"sun_h":1565.0,"rain_mm":1788.0,"lat":25.2802,"lon":110.2964},{"name":"Yongzhou","country":"People's Republic of China","cc":"CN","pop":1020715,"sun_h":1578.0,"rain_mm":1357.0,"lat":26.4239,"lon":111.6131},{"name":"Liuzhou","country":"People's Republic of China","cc":"CN","pop":1436599,"sun_h":1579.0,"rain_mm":1471.0,"lat":24.324,"lon":109.407},{"name":"Changde","country":"People's Republic of China","cc":"CN","pop":1457419,"sun_h":1580.0,"rain_mm":1304.0,"lat":29.0321,"lon":111.6984},{"name":"Heshan","country":"People's Republic of China","cc":"CN","pop":1249807,"sun_h":1592.0,"rain_mm":1334.0,"lat":28.5694,"lon":112.3473},{"name":"Changsha","country":"People's Republic of China","cc":"CN","pop":3093980,"sun_h":1592.0,"rain_mm":1375.0,"lat":28.1987,"lon":112.9709},{"name":"Zhuzhou","country":"People's Republic of China","cc":"CN","pop":1129687,"sun_h":1606.0,"rain_mm":1413.0,"lat":27.8333,"lon":113.15},{"name":"Hengyang","country":"People's Republic of China","cc":"CN","pop":1075516,"sun_h":1607.0,"rain_mm":1341.0,"lat":26.8895,"lon":112.6189},{"name":"Yichang","country":"People's Republic of China","cc":"CN","pop":1350150,"sun_h":1628.0,"rain_mm":1148.0,"lat":30.7144,"lon":111.2847},{"name":"Hanoi","country":"Vietnam","cc":"VN","pop":8053663,"sun_h":1643.0,"rain_mm":1592.0,"lat":21.0245,"lon":105.8412},{"name":"Guankou","country":"People's Republic of China","cc":"CN","pop":1380000,"sun_h":1646.0,"rain_mm":1492.0,"lat":28.1586,"lon":113.6271},{"name":"Curitiba","country":"Brazil","cc":"BR","pop":1948626,"sun_h":1654.0,"rain_mm":1477.0,"lat":-25.4278,"lon":-49.2731},{"name":"Hanzhong","country":"People's Republic of China","cc":"CN","pop":1006557,"sun_h":1669.0,"rain_mm":906.0,"lat":33.0751,"lon":107.0221},{"name":"Kyoto","country":"Japan","cc":"JP","pop":1463723,"sun_h":1675.0,"rain_mm":1552.0,"lat":35.0211,"lon":135.7538},{"name":"Liupanshui","country":"People's Republic of China","cc":"CN","pop":1320825,"sun_h":1678.0,"rain_mm":1117.0,"lat":26.5944,"lon":104.8333},{"name":"Sapporo","country":"Japan","cc":"JP","pop":1973832,"sun_h":1690.0,"rain_mm":1152.0,"lat":43.0667,"lon":141.35},{"name":"Nanning","country":"People's Republic of China","cc":"CN","pop":5977185,"sun_h":1690.0,"rain_mm":1383.0,"lat":22.8167,"lon":108.3167},{"name":"Hezhou","country":"People's Republic of China","cc":"CN","pop":1005490,"sun_h":1703.0,"rain_mm":1630.0,"lat":24.4036,"lon":111.5667},{"name":"Taipei","country":"Taiwan","cc":"TW","pop":7871900,"sun_h":1703.0,"rain_mm":1987.0,"lat":25.0531,"lon":121.5264},{"name":"Douala","country":"Cameroon","cc":"CM","pop":1338082,"sun_h":1706.0,"rain_mm":3476.0,"lat":4.0483,"lon":9.7043},{"name":"Cali","country":"Colombia","cc":"CO","pop":2392877,"sun_h":1712.0,"rain_mm":1693.0,"lat":3.4305,"lon":-76.5199},{"name":"Yichun","country":"People's Republic of China","cc":"CN","pop":1045952,"sun_h":1717.0,"rain_mm":1613.0,"lat":27.8333,"lon":114.4},{"name":"Jingzhou","country":"People's Republic of China","cc":"CN","pop":1052282,"sun_h":1719.0,"rain_mm":1107.0,"lat":30.3503,"lon":112.1903},{"name":"Guigang","country":"People's Republic of China","cc":"CN","pop":1086327,"sun_h":1720.0,"rain_mm":1622.0,"lat":23.116,"lon":109.5947},{"name":"Pointe-Noire","country":"Republic of the Congo","cc":"CG","pop":1032000,"sun_h":1724.0,"rain_mm":1213.0,"lat":-4.7761,"lon":11.8635},{"name":"New Taipei City","country":"Taiwan","cc":"TW","pop":4004367,"sun_h":1724.0,"rain_mm":1929.0,"lat":25.062,"lon":121.457},{"name":"Haiphong","country":"Vietnam","cc":"VN","pop":2625200,"sun_h":1725.0,"rain_mm":1577.0,"lat":20.8648,"lon":106.6834},{"name":"Biên Hòa","country":"Vietnam","cc":"VN","pop":1272235,"sun_h":1737.0,"rain_mm":1791.0,"lat":10.9447,"lon":106.8243},{"name":"Ho Chi Minh City","country":"Vietnam","cc":"VN","pop":14002598,"sun_h":1746.0,"rain_mm":1805.0,"lat":10.823,"lon":106.6296},{"name":"Shaoguan","country":"People's Republic of China","cc":"CN","pop":1028460,"sun_h":1755.0,"rain_mm":1572.0,"lat":24.8,"lon":113.5833},{"name":"São Paulo","country":"Brazil","cc":"BR","pop":12400232,"sun_h":1756.0,"rain_mm":1448.0,"lat":-23.5475,"lon":-46.6361},{"name":"Qingyuan","country":"People's Republic of China","cc":"CN","pop":1738424,"sun_h":1758.0,"rain_mm":1931.0,"lat":23.7,"lon":113.0333},{"name":"Onitsha","country":"Nigeria","cc":"NG","pop":1553000,"sun_h":1761.0,"rain_mm":1992.0,"lat":6.1498,"lon":6.7857},{"name":"Benin City","country":"Nigeria","cc":"NG","pop":1782000,"sun_h":1763.0,"rain_mm":2011.0,"lat":6.3381,"lon":5.6258},{"name":"Monrovia","country":"Liberia","cc":"LR","pop":1542549,"sun_h":1766.0,"rain_mm":3262.0,"lat":6.3005,"lon":-10.7969},{"name":"Manaus","country":"Brazil","cc":"BR","pop":2219580,"sun_h":1772.0,"rain_mm":2268.0,"lat":-3.1019,"lon":-60.025},{"name":"Qinzhou","country":"People's Republic of China","cc":"CN","pop":1296300,"sun_h":1774.0,"rain_mm":2035.0,"lat":21.9825,"lon":108.6506},{"name":"Fuzhou","country":"People's Republic of China","cc":"CN","pop":4094491,"sun_h":1777.0,"rain_mm":1353.0,"lat":26.0614,"lon":119.3061},{"name":"Yaoundé","country":"Cameroon","cc":"CM","pop":1299369,"sun_h":1779.0,"rain_mm":1635.0,"lat":3.8667,"lon":11.5167},{"name":"Guarulhos","country":"Brazil","cc":"BR","pop":1345364,"sun_h":1784.0,"rain_mm":1324.0,"lat":-23.4628,"lon":-46.5333},{"name":"Fukuoka","country":"Japan","cc":"JP","pop":1612392,"sun_h":1787.0,"rain_mm":1731.0,"lat":33.6,"lon":130.4167},{"name":"Yulin","country":"People's Republic of China","cc":"CN","pop":1056743,"sun_h":1792.0,"rain_mm":1664.0,"lat":22.6305,"lon":110.1469},{"name":"Wenzhou","country":"People's Republic of China","cc":"CN","pop":2650000,"sun_h":1794.0,"rain_mm":1650.0,"lat":27.9994,"lon":120.6668},{"name":"Rui’an","country":"People's Republic of China","cc":"CN","pop":1125000,"sun_h":1797.0,"rain_mm":1607.0,"lat":27.7761,"lon":120.6586},{"name":"Kobe","country":"Japan","cc":"JP","pop":1525152,"sun_h":1799.0,"rain_mm":1422.0,"lat":34.6913,"lon":135.183},{"name":"Ganzhou","country":"People's Republic of China","cc":"CN","pop":1977253,"sun_h":1802.0,"rain_mm":1469.0,"lat":25.8466,"lon":114.9326},{"name":"Guangzhou","country":"People's Republic of China","cc":"CN","pop":18676605,"sun_h":1804.0,"rain_mm":1739.0,"lat":23.1167,"lon":113.25},{"name":"Nanhai","country":"People's Republic of China","cc":"CN","pop":3667247,"sun_h":1809.0,"rain_mm":1735.0,"lat":23.0219,"lon":113.1428},{"name":"Foshan","country":"People's Republic of China","cc":"CN","pop":9042509,"sun_h":1809.0,"rain_mm":1735.0,"lat":23.0268,"lon":113.1315},{"name":"Taizhou","country":"People's Republic of China","cc":"CN","pop":1485502,"sun_h":1812.0,"rain_mm":1524.0,"lat":28.6627,"lon":121.4331},{"name":"Zhaoqing","country":"People's Republic of China","cc":"CN","pop":1553109,"sun_h":1814.0,"rain_mm":1705.0,"lat":23.0489,"lon":112.4609},{"name":"Taichung","country":"Taiwan","cc":"TW","pop":2850285,"sun_h":1815.0,"rain_mm":1864.0,"lat":24.1469,"lon":120.6839},{"name":"Fuzhou","country":"People's Republic of China","cc":"CN","pop":1089888,"sun_h":1821.0,"rain_mm":1648.0,"lat":27.96,"lon":116.3333},{"name":"Medellín","country":"Colombia","cc":"CO","pop":1999979,"sun_h":1824.0,"rain_mm":2648.0,"lat":6.245,"lon":-75.5715},{"name":"Yunfu","country":"People's Republic of China","cc":"CN","pop":2612800,"sun_h":1827.0,"rain_mm":1778.0,"lat":22.9279,"lon":112.0381},{"name":"Kawasaki","country":"Japan","cc":"JP","pop":1538262,"sun_h":1827.0,"rain_mm":1432.0,"lat":35.5206,"lon":139.7172},{"name":"Yokohama","country":"Japan","cc":"JP","pop":3777491,"sun_h":1828.0,"rain_mm":1553.0,"lat":35.4333,"lon":139.65},{"name":"Osaka","country":"Japan","cc":"JP","pop":2753862,"sun_h":1829.0,"rain_mm":1440.0,"lat":34.6938,"lon":135.5011},{"name":"Xinyi","country":"People's Republic of China","cc":"CN","pop":1014577,"sun_h":1833.0,"rain_mm":1800.0,"lat":22.373,"lon":110.9475},{"name":"Tokyo","country":"Japan","cc":"JP","pop":9733276,"sun_h":1834.0,"rain_mm":1370.0,"lat":35.6895,"lon":139.6917},{"name":"Sendai","country":"Japan","cc":"JP","pop":1096704,"sun_h":1835.0,"rain_mm":1166.0,"lat":38.2667,"lon":140.8667},{"name":"Longyan","country":"People's Republic of China","cc":"CN","pop":1025087,"sun_h":1847.0,"rain_mm":1724.0,"lat":25.0749,"lon":117.0178},{"name":"Nanchang","country":"People's Republic of China","cc":"CN","pop":2357839,"sun_h":1848.0,"rain_mm":1557.0,"lat":28.684,"lon":115.8531},{"name":"Dongguan","country":"People's Republic of China","cc":"CN","pop":9644871,"sun_h":1851.0,"rain_mm":1926.0,"lat":23.018,"lon":113.7487},{"name":"Putian","country":"People's Republic of China","cc":"CN","pop":1539389,"sun_h":1859.0,"rain_mm":1285.0,"lat":25.4394,"lon":119.0103},{"name":"Lagos","country":"Nigeria","cc":"NG","pop":15388000,"sun_h":1863.0,"rain_mm":1689.0,"lat":6.4541,"lon":3.3947},{"name":"Yiwu","country":"People's Republic of China","cc":"CN","pop":1481384,"sun_h":1863.0,"rain_mm":1423.0,"lat":29.3151,"lon":120.0768},{"name":"Puyang","country":"People's Republic of China","cc":"CN","pop":3590000,"sun_h":1868.0,"rain_mm":1455.0,"lat":29.4568,"lon":119.8887},{"name":"Saitama","country":"Japan","cc":"JP","pop":1324854,"sun_h":1871.0,"rain_mm":1307.0,"lat":35.9081,"lon":139.6566},{"name":"Jiangmen","country":"People's Republic of China","cc":"CN","pop":1795459,"sun_h":1875.0,"rain_mm":1797.0,"lat":22.5833,"lon":113.0833},{"name":"Ningbo","country":"People's Republic of China","cc":"CN","pop":3731203,"sun_h":1876.0,"rain_mm":1374.0,"lat":29.8782,"lon":121.5494},{"name":"Quito","country":"Ecuador","cc":"EC","pop":2781641,"sun_h":1876.0,"rain_mm":1306.0,"lat":-0.2298,"lon":-78.525},{"name":"Shaoxing","country":"People's Republic of China","cc":"CN","pop":2300000,"sun_h":1877.0,"rain_mm":1321.0,"lat":30.0024,"lon":120.5786},{"name":"Shangrao","country":"People's Republic of China","cc":"CN","pop":1116486,"sun_h":1879.0,"rain_mm":1745.0,"lat":28.4518,"lon":117.9429},{"name":"Hangzhou","country":"People's Republic of China","cc":"CN","pop":11936010,"sun_h":1883.0,"rain_mm":1393.0,"lat":30.2936,"lon":120.1614},{"name":"Lianjiang","country":"People's Republic of China","cc":"CN","pop":1363470,"sun_h":1887.0,"rain_mm":1648.0,"lat":21.6467,"lon":110.2817},{"name":"Zhongshan","country":"People's Republic of China","cc":"CN","pop":3841873,"sun_h":1891.0,"rain_mm":1791.0,"lat":22.5231,"lon":113.3791},{"name":"Cixi","country":"People's Republic of China","cc":"CN","pop":1457510,"sun_h":1892.0,"rain_mm":1277.0,"lat":30.1764,"lon":121.2457},{"name":"Jinhua","country":"People's Republic of China","cc":"CN","pop":1463990,"sun_h":1895.0,"rain_mm":1428.0,"lat":29.1068,"lon":119.6442},{"name":"Hiroshima","country":"Japan","cc":"JP","pop":1200754,"sun_h":1896.0,"rain_mm":1607.0,"lat":34.4,"lon":132.45},{"name":"Jiujiang","country":"People's Republic of China","cc":"CN","pop":1164268,"sun_h":1906.0,"rain_mm":1534.0,"lat":29.7048,"lon":116.0021},{"name":"Huizhou","country":"People's Republic of China","cc":"CN","pop":2900113,"sun_h":1911.0,"rain_mm":2059.0,"lat":23.1115,"lon":114.4152},{"name":"Milan","country":"Italy","cc":"IT","pop":1371498,"sun_h":1920.0,"rain_mm":1050.0,"lat":45.4643,"lon":9.1895},{"name":"Kinshasa","country":"Democratic Republic of the Congo","cc":"CD","pop":16000000,"sun_h":1920.0,"rain_mm":1386.0,"lat":-4.3276,"lon":15.3136},{"name":"Brazzaville","country":"Republic of the Congo","cc":"CG","pop":1982000,"sun_h":1920.0,"rain_mm":1386.0,"lat":-4.2661,"lon":15.2832},{"name":"Maoming","country":"People's Republic of China","cc":"CN","pop":1307802,"sun_h":1922.0,"rain_mm":1797.0,"lat":21.6663,"lon":110.9136},{"name":"Jiaxing","country":"People's Republic of China","cc":"CN","pop":1180000,"sun_h":1923.0,"rain_mm":1196.0,"lat":30.7522,"lon":120.75},{"name":"Zhanjiang","country":"People's Republic of China","cc":"CN","pop":1400709,"sun_h":1924.0,"rain_mm":1604.0,"lat":21.2339,"lon":110.3875},{"name":"Bao'an","country":"People's Republic of China","cc":"CN","pop":4476554,"sun_h":1927.0,"rain_mm":1986.0,"lat":22.5521,"lon":113.8829},{"name":"Yangjiang","country":"People's Republic of China","cc":"CN","pop":1292987,"sun_h":1929.0,"rain_mm":2208.0,"lat":21.8556,"lon":111.9627},{"name":"Qujing","country":"People's Republic of China","cc":"CN","pop":1408500,"sun_h":1935.0,"rain_mm":1063.0,"lat":25.4833,"lon":103.7833},{"name":"Huzhou","country":"People's Republic of China","cc":"CN","pop":1015937,"sun_h":1940.0,"rain_mm":1157.0,"lat":30.8703,"lon":120.0933},{"name":"Shenzhen","country":"People's Republic of China","cc":"CN","pop":17494398,"sun_h":1941.0,"rain_mm":2063.0,"lat":22.5455,"lon":114.0683},{"name":"Luohu District","country":"People's Republic of China","cc":"CN","pop":1143801,"sun_h":1941.0,"rain_mm":2063.0,"lat":22.5472,"lon":114.1315},{"name":"Fengxiang","country":"People's Republic of China","cc":"CN","pop":1140872,"sun_h":1941.0,"rain_mm":1157.0,"lat":30.8584,"lon":121.4678},{"name":"Ibadan","country":"Nigeria","cc":"NG","pop":3649000,"sun_h":1941.0,"rain_mm":1344.0,"lat":7.3776,"lon":3.9059},{"name":"Zhuhai","country":"People's Republic of China","cc":"CN","pop":2207090,"sun_h":1946.0,"rain_mm":1758.0,"lat":22.2769,"lon":113.5678},{"name":"Kumasi","country":"Ghana","cc":"GH","pop":2544530,"sun_h":1948.0,"rain_mm":1395.0,"lat":6.6885,"lon":-1.6244},{"name":"Songjiang","country":"People's Republic of China","cc":"CN","pop":1973500,"sun_h":1953.0,"rain_mm":1146.0,"lat":31.0344,"lon":121.2233},{"name":"Qingpu","country":"People's Republic of China","cc":"CN","pop":1271424,"sun_h":1954.0,"rain_mm":1147.0,"lat":31.1539,"lon":121.1141},{"name":"Minhang","country":"People's Republic of China","cc":"CN","pop":2716600,"sun_h":1955.0,"rain_mm":1140.0,"lat":31.1088,"lon":121.3747},{"name":"New Territories","country":"Hong Kong","cc":"HK","pop":3984077,"sun_h":1956.0,"rain_mm":2117.0,"lat":22.4244,"lon":114.111},{"name":"Nagoya","country":"Japan","cc":"JP","pop":2332176,"sun_h":1958.0,"rain_mm":1689.0,"lat":35.1815,"lon":136.9064},{"name":"Quanzhou","country":"People's Republic of China","cc":"CN","pop":1469157,"sun_h":1959.0,"rain_mm":1300.0,"lat":24.9139,"lon":118.5858},{"name":"Wuhan","country":"People's Republic of China","cc":"CN","pop":13739000,"sun_h":1965.0,"rain_mm":1245.0,"lat":30.5833,"lon":114.2667},{"name":"Wuchang","country":"People's Republic of China","cc":"CN","pop":1102188,"sun_h":1965.0,"rain_mm":1245.0,"lat":30.5431,"lon":114.3007},{"name":"Suzhou","country":"People's Republic of China","cc":"CN","pop":6715559,"sun_h":1966.0,"rain_mm":1109.0,"lat":31.3041,"lon":120.5954},{"name":"Montréal","country":"Canada","cc":"CA","pop":1762949,"sun_h":1970.0,"rain_mm":1025.0,"lat":45.5088,"lon":-73.5878},{"name":"Shanghai","country":"People's Republic of China","cc":"CN","pop":24874500,"sun_h":1970.0,"rain_mm":1134.0,"lat":31.2222,"lon":121.4581},{"name":"Xuhui","country":"People's Republic of China","cc":"CN","pop":1109800,"sun_h":1970.0,"rain_mm":1134.0,"lat":31.1959,"lon":121.4471},{"name":"Puxi","country":"People's Republic of China","cc":"CN","pop":6683712,"sun_h":1970.0,"rain_mm":1134.0,"lat":31.2441,"lon":121.4659},{"name":"Putuo","country":"People's Republic of China","cc":"CN","pop":1239100,"sun_h":1970.0,"rain_mm":1134.0,"lat":31.251,"lon":121.3897},{"name":"Pudong","country":"People's Republic of China","cc":"CN","pop":5681512,"sun_h":1973.0,"rain_mm":1126.0,"lat":31.24,"lon":121.5009},{"name":"Yangpu","country":"People's Republic of China","cc":"CN","pop":1210800,"sun_h":1973.0,"rain_mm":1126.0,"lat":31.2619,"lon":121.519},{"name":"Kisangani","country":"Democratic Republic of the Congo","cc":"CD","pop":1602144,"sun_h":1979.0,"rain_mm":1762.0,"lat":0.5153,"lon":25.191},{"name":"Kathmandu","country":"Nepal","cc":"NP","pop":1442271,"sun_h":1980.0,"rain_mm":2101.0,"lat":27.7017,"lon":85.3206},{"name":"Jieyang","country":"People's Republic of China","cc":"CN","pop":1899394,"sun_h":1981.0,"rain_mm":1563.0,"lat":23.5418,"lon":116.3658},{"name":"Kunshan","country":"People's Republic of China","cc":"CN","pop":2092496,"sun_h":1984.0,"rain_mm":1109.0,"lat":31.3776,"lon":120.9543},{"name":"Jiading","country":"People's Republic of China","cc":"CN","pop":1886100,"sun_h":1985.0,"rain_mm":1123.0,"lat":31.3858,"lon":121.2446},{"name":"Jinjiang","country":"People's Republic of China","cc":"CN","pop":1416151,"sun_h":1985.0,"rain_mm":1278.0,"lat":24.8198,"lon":118.5742},{"name":"Baoshan","country":"People's Republic of China","cc":"CN","pop":2265900,"sun_h":1987.0,"rain_mm":1132.0,"lat":31.4084,"lon":121.4896},{"name":"Yixing","country":"People's Republic of China","cc":"CN","pop":1285785,"sun_h":1990.0,"rain_mm":1125.0,"lat":31.3606,"lon":119.8202},{"name":"Chaozhou","country":"People's Republic of China","cc":"CN","pop":1750945,"sun_h":1991.0,"rain_mm":1523.0,"lat":23.654,"lon":116.6226},{"name":"Kigali","country":"Rwanda","cc":"RW","pop":1132686,"sun_h":1991.0,"rain_mm":1094.0,"lat":-1.95,"lon":30.0588},{"name":"Puning","country":"People's Republic of China","cc":"CN","pop":1998619,"sun_h":1992.0,"rain_mm":1663.0,"lat":23.3107,"lon":116.1687},{"name":"Tainan","country":"Taiwan","cc":"TW","pop":1856642,"sun_h":1993.0,"rain_mm":1871.0,"lat":22.9926,"lon":120.2051},{"name":"Hong Kong Island","country":"Hong Kong","cc":"HK","pop":1195529,"sun_h":1999.0,"rain_mm":2119.0,"lat":22.263,"lon":114.1842},{"name":"Hong Kong","country":"Hong Kong","cc":"HK","pop":7396076,"sun_h":1999.0,"rain_mm":2119.0,"lat":22.2783,"lon":114.1747},{"name":"Wuxi","country":"People's Republic of China","cc":"CN","pop":4396835,"sun_h":1999.0,"rain_mm":1083.0,"lat":31.5689,"lon":120.2886},{"name":"Kowloon","country":"Hong Kong","cc":"HK","pop":2232339,"sun_h":1999.0,"rain_mm":2119.0,"lat":22.3167,"lon":114.1833},{"name":"Changshu","country":"People's Republic of China","cc":"CN","pop":1677050,"sun_h":2000.0,"rain_mm":1091.0,"lat":31.6461,"lon":120.7422},{"name":"Ottawa","country":"Canada","cc":"CA","pop":1017449,"sun_h":2002.0,"rain_mm":892.0,"lat":45.4112,"lon":-75.6981},{"name":"Wuhu","country":"People's Republic of China","cc":"CN","pop":1598165,"sun_h":2008.0,"rain_mm":1167.0,"lat":31.3526,"lon":118.4295},{"name":"Shantou","country":"People's Republic of China","cc":"CN","pop":3838900,"sun_h":2010.0,"rain_mm":1511.0,"lat":23.3549,"lon":116.6788},{"name":"Changzhou","country":"People's Republic of China","cc":"CN","pop":3290918,"sun_h":2018.0,"rain_mm":1078.0,"lat":31.7736,"lon":119.954},{"name":"Cần Thơ","country":"Vietnam","cc":"VN","pop":1507187,"sun_h":2018.0,"rain_mm":1828.0,"lat":10.0371,"lon":105.7883},{"name":"Auckland","country":"New Zealand","cc":"NZ","pop":1547200,"sun_h":2023.0,"rain_mm":1208.0,"lat":-36.8485,"lon":174.7635},{"name":"Kaohsiung","country":"Taiwan","cc":"TW","pop":2737660,"sun_h":2024.0,"rain_mm":1967.0,"lat":22.6163,"lon":120.3133},{"name":"Xinyang","country":"People's Republic of China","cc":"CN","pop":1416800,"sun_h":2024.0,"rain_mm":1112.0,"lat":32.1228,"lon":114.0656},{"name":"Jiangyin","country":"People's Republic of China","cc":"CN","pop":1779515,"sun_h":2032.0,"rain_mm":1070.0,"lat":31.911,"lon":120.263},{"name":"Zhangjiagang","country":"People's Republic of China","cc":"CN","pop":1432044,"sun_h":2032.0,"rain_mm":1072.0,"lat":31.865,"lon":120.5389},{"name":"Lu’an","country":"People's Republic of China","cc":"CN","pop":1644344,"sun_h":2038.0,"rain_mm":1160.0,"lat":31.7356,"lon":116.5169},{"name":"Batam","country":"Indonesia","cc":"ID","pop":1296960,"sun_h":2038.0,"rain_mm":2414.0,"lat":1.1494,"lon":104.0249},{"name":"Hefei","country":"People's Republic of China","cc":"CN","pop":9465881,"sun_h":2049.0,"rain_mm":990.0,"lat":31.8639,"lon":117.2808},{"name":"Nantong","country":"People's Republic of China","cc":"CN","pop":2273326,"sun_h":2053.0,"rain_mm":1065.0,"lat":32.0303,"lon":120.8747},{"name":"Nanjing","country":"People's Republic of China","cc":"CN","pop":9314685,"sun_h":2056.0,"rain_mm":1046.0,"lat":32.0617,"lon":118.7778},{"name":"Singapore","country":"Singapore","cc":"SG","pop":5638700,"sun_h":2057.0,"rain_mm":2319.0,"lat":1.2897,"lon":103.8501},{"name":"Xiamen","country":"People's Republic of China","cc":"CN","pop":4617251,"sun_h":2068.0,"rain_mm":1234.0,"lat":24.4798,"lon":118.0819},{"name":"Kolkata","country":"India","cc":"IN","pop":4631392,"sun_h":2078.0,"rain_mm":1579.0,"lat":22.5626,"lon":88.363},{"name":"Taizhou","country":"People's Republic of China","cc":"CN","pop":1607108,"sun_h":2079.0,"rain_mm":1054.0,"lat":32.4907,"lon":119.9081},{"name":"Yangzhou","country":"People's Republic of China","cc":"CN","pop":4559797,"sun_h":2079.0,"rain_mm":1037.0,"lat":32.3972,"lon":119.4358},{"name":"Howrah","country":"India","cc":"IN","pop":1027672,"sun_h":2083.0,"rain_mm":1550.0,"lat":22.5769,"lon":88.3186}],"sunny_wet":[{"name":"Surabaya","country":"Indonesia","cc":"ID","pop":3018022,"sun_h":3244.0,"rain_mm":1596.0,"lat":-7.2492,"lon":112.7508},{"name":"Makassar","country":"Indonesia","cc":"ID","pop":1474393,"sun_h":2848.0,"rain_mm":3249.0,"lat":-5.1486,"lon":119.4319},{"name":"Semarang","country":"Indonesia","cc":"ID","pop":1694740,"sun_h":2837.0,"rain_mm":2110.0,"lat":-6.9931,"lon":110.4208},{"name":"Pimpri","country":"India","cc":"IN","pop":1284606,"sun_h":2785.0,"rain_mm":1516.0,"lat":18.6229,"lon":73.807},{"name":"Pimpri-Chinchwad","country":"India","cc":"IN","pop":1727692,"sun_h":2785.0,"rain_mm":1516.0,"lat":18.6187,"lon":73.8037},{"name":"Jepara","country":"Indonesia","cc":"ID","pop":1257912,"sun_h":2764.0,"rain_mm":2867.0,"lat":-6.5924,"lon":110.671},{"name":"Kakamega","country":"Kenya","cc":"KE","pop":1867579,"sun_h":2757.0,"rain_mm":1882.0,"lat":0.2842,"lon":34.7523},{"name":"Virār","country":"India","cc":"IN","pop":1222390,"sun_h":2705.0,"rain_mm":2395.0,"lat":19.4559,"lon":72.8114}],"n_wet1500":131,"dull_dry":[{"name":"Lima","country":"Peru","cc":"PE","pop":7737002,"sun_h":1507.0,"rain_mm":17.0,"lat":-12.0432,"lon":-77.0282},{"name":"Callao","country":"Peru","cc":"PE","pop":1226200,"sun_h":1507.0,"rain_mm":17.0,"lat":-12.0516,"lon":-77.1345},{"name":"Trujillo","country":"Peru","cc":"PE","pop":1067700,"sun_h":1934.0,"rain_mm":15.0,"lat":-8.116,"lon":-79.03},{"name":"Chelyabinsk","country":"Russia","cc":"RU","pop":1202371,"sun_h":2090.0,"rain_mm":452.0,"lat":55.1611,"lon":61.4288},{"name":"Novosibirsk","country":"Russia","cc":"RU","pop":1612833,"sun_h":2108.0,"rain_mm":455.0,"lat":55.0226,"lon":82.9317},{"name":"Volgograd","country":"Russia","cc":"RU","pop":1013533,"sun_h":2116.0,"rain_mm":374.0,"lat":48.7138,"lon":44.4976},{"name":"Baku","country":"Azerbaijan","cc":"AZ","pop":2351300,"sun_h":2124.0,"rain_mm":234.0,"lat":40.3777,"lon":49.892},{"name":"Odesa","country":"Ukraine","cc":"UA","pop":1010537,"sun_h":2124.0,"rain_mm":441.0,"lat":46.4857,"lon":30.7438}],"n_dry500":92,"n_sunny_wet_cls":2,"n_dull_dry_cls":3,"sunny_wet_cls":[{"name":"Surabaya","country":"Indonesia","cc":"ID","pop":3018022,"sun_h":3244.0,"rain_mm":1596.0,"lat":-7.2492,"lon":112.7508},{"name":"Antalya","country":"Turkey","cc":"TR","pop":1335002,"sun_h":3106.0,"rain_mm":1026.0,"lat":36.9081,"lon":30.6956}],"dull_dry_cls":[{"name":"Lima","country":"Peru","cc":"PE","pop":7737002,"sun_h":1507.0,"rain_mm":17.0,"lat":-12.0432,"lon":-77.0282},{"name":"Callao","country":"Peru","cc":"PE","pop":1226200,"sun_h":1507.0,"rain_mm":17.0,"lat":-12.0516,"lon":-77.1345},{"name":"Trujillo","country":"Peru","cc":"PE","pop":1067700,"sun_h":1934.0,"rain_mm":15.0,"lat":-8.116,"lon":-79.03}],"class_counts":{"12":146,"02":142,"11":139,"20":45,"10":44,"01":41,"21":11,"00":3,"22":2},"rows":[["Shanghai","CN",24874500,1970,1134],["Chongqing","CN",22000000,1199,1094],["Chengdu","CN",20937757,1301,955],["Beijing","CN",18960744,2706,490],["Guangzhou","CN",18676605,1804,1739],["Shenzhen","CN",17494398,1941,2063],["Kinshasa","CD",16000000,1920,1386],["Istanbul","TR",15701602,2764,773],["Lagos","NG",15388000,1863,1689],["Ho Chi Minh City","VN",14002598,1746,1805],["Tianjin","CN",13866009,2627,566],["Wuhan","CN",13739000,1965,1245],["Lahore","PK",13004135,2931,625],["Xi’an","CN",12952907,1910,592],["Mumbai","IN",12691836,2669,2585],["São Paulo","BR",12400232,1756,1448],["Mexico City","MX",12294193,2019,635],["Hangzhou","CN",11936010,1883,1393],["Karachi","PK",11624219,3043,203],["Delhi","IN",11034555,2681,770],["Moscow","RU",10381222,1700,678],["Dhaka","BD",10356500,2101,2023],["Seoul","KR",10349312,2321,1343],["Harbin","CN",10009854,2554,525],["Tokyo","JP",9733276,1834,1370],["Dongguan","CN",9644871,1851,1926],["Cairo","EG",9606916,3331,21],["Hefei","CN",9465881,2049,990],["Johannesburg","ZA",9418183,3171,741],["Weifang","CN",9386705,2527,628],["Nanjing","CN",9314685,2056,1046],["Shenyang","CN",9070093,2541,678],["Foshan","CN",9042509,1809,1735],["London","GB",8961989,1454,628],["New York City","US",8804190,2500,1155],["Jakarta","ID",8540121,2652,1978],["Bengaluru","IN",8495492,2377,894],["Jinan","CN",8352574,2564,617],["Hanoi","VN",8053663,1643,1592],["Taipei","TW",7871900,1703,1987],["Lima","PE",7737002,1507,17],["Bogotá","CO",7674366,1528,850],["Dalian","CN",7450785,2664,625],["Hong Kong","HK",7396076,1999,2119],["Baghdad","IQ",7216000,3475,177],["Wuzhong","CN",7202654,2753,222],["Qingdao","CN",7172451,2471,790],["Tehran","IR",7153309,2920,258],["Yantai","CN",7102100,2561,713],["Hyderabad","IN",6993262,2697,819],["Rio de Janeiro","BR",6747815,2094,1629],["Suzhou","CN",6715559,1966,1109],["Puxi","CN",6683712,1970,1134],["Zhengzhou","CN",6650532,2256,628],["Ahmedabad","IN",6357693,3004,749],["Abidjan","CI",6321017,2114,1545],["Nanning","CN",5977185,1690,1383],["Kunming","CN",5950578,2204,995],["Shijiazhuang","CN",5758403,2567,543],["Changchun","CN",5691024,2580,578],["Pudong","CN",5681512,1973,1126],["Sydney","AU",5638830,2498,1309],["Singapore","SG",5638700,2057,2319],["Melbourne","AU",5435590,2199,628],["Dar es Salaam","TZ",5383728,2727,1004],["Saint Petersburg","RU",5351935,1618,641],["Taiyuan","CN",5305061,2572,492],["Alexandria","EG",5263542,3258,195],["Bangkok","TH",5104476,2543,1394],["Kano","NG",4910000,2926,687],["Santiago","CL",4837295,2557,373],["Cape Town","ZA",4772846,2961,1079],["Peshawar","PK",4758762,2850,411],["Zibo","CN",4704138,2537,618],["Jeddah","SA",4697000,3319,65],["Chennai","IN",4681087,2677,1304],["Kolkata","IN",4631392,2078,1579],["Xiamen","CN",4617251,2068,1234],["Surat","IN",4591246,2879,1047],["Yangzhou","CN",4559797,2079,1037],["Huai'an","CN",4556230,2180,944],["Guiyang","CN",4506134,1308,1147],["Yangon","MM",4477638,2573,2762],["Bao'an","CN",4476554,1927,1986],["Kabul","AF",4434550,3032,333],["Nairobi","KE",4397073,2440,1066],["Wuxi","CN",4396835,1999,1083],["Giza","EG",4367343,3331,21],["Lanzhou","CN",4359446,2474,335],["Bamako","ML",4227569,2933,939],["Riyadh","SA",4205961,3364,117],["Fuzhou","CN",4094491,1777,1353],["Ürümqi","CN",4054000,2775,247],["New Taipei City","TW",4004367,1724,1929],["New Territories","HK",3984077,1956,2117],["Chattogram","BD",3920222,2185,2850],["Addis Ababa","ET",3860000,2830,1259],["Zaozhuang","CN",3855601,2345,841],["Zhongshan","CN",3841873,1891,1791],["Shantou","CN",3838900,2010,1511],["Los Angeles","US",3820914,3194,389],["Faisalabad","PK",3800193,2980,359],["Dubai","AE",3790000,3452,90],["Yokohama","JP",3777491,1828,1553],["Ningbo","CN",3731203,1876,1374],["Nanhai","CN",3667247,1809,1735],["Casablanca","MA",3665954,2895,418],["Ibadan","NG",3649000,1941,1344],["Puyang","CN",3590000,1868,1455],["Ankara","TR",3517182,2820,408],["Shiyan","CN",3460000,1791,823],["Hohhot","CN",3446100,2913,409],["Berlin","DE",3426354,1614,582],["Tangshan","CN",3372102,2671,626],["Rawalpindi","PK",3357612,2890,1160],["Lüliang","CN",3346500,2602,534],["Durban","ZA",3338026,2425,1009],["Anshan","CN",3325372,2579,712],["Changzhou","CN",3290918,2018,1078],["Busan","KR",3285147,2282,1508],["Madrid","ES",3255944,2598,440],["Pyongyang","KP",3222000,2429,1011],["Pune","IN",3124458,2801,799],["Datong","CN",3105591,2810,395],["Bursa","TR",3101833,2832,704],["Changsha","CN",3093980,1592,1375],["Quezon City","PH",3084270,2363,2264],["Jaipur","IN",3046163,2833,636],["Huainan","CN",3033528,2107,947],["Surabaya","ID",3018022,3244,1596],["Incheon","KR",3015482,2356,1262],["Haikou","CN",3001600,2096,1687],["Caracas","VE",3000000,2348,935],["Kyiv","UA",2952301,1729,594],["İzmir","TR",2938292,3141,682],["Huizhou","CN",2900113,1911,2059],["Buenos Aires","AR",2891082,2417,1065],["Yinchuan","CN",2859074,2847,199],["Taichung","TW",2850285,1815,1864],["Kanpur","IN",2823249,2664,884],["Toronto","CA",2794356,1996,801],["Quito","EC",2781641,1876,1306],["Brisbane","AU",2780063,2835,1209],["Luanda","AO",2776168,2306,458],["Baotou","CN",2761700,2957,310],["Osaka","JP",2753862,1829,1440],["Linyi","CN",2743843,2363,860],["Baoding","CN",2739887,2614,524],["Kaohsiung","TW",2737660,2024,1967],["Brooklyn","US",2736074,2513,1120],["Guayaquil","EC",2723665,1154,878],["Belo Horizonte","BR",2721564,2385,1535],["Minhang","CN",2716600,1955,1140],["Bazhong","CN",2712894,1465,1143],["Salvador","BR",2711840,2332,1987],["Abuja","NG",2690000,2474,1204],["Gazipur","BD",2674697,2108,2054],["Chicago","US",2664452,2468,913],["Wenzhou","CN",2650000,1794,1650],["Bekasi","ID",2648272,2652,1978],["Dakar","SN",2646503,2973,458],["Haiphong","VN",2625200,1725,1577],["Yunfu","CN",2612800,1827,1778],["Navi Mumbai","IN",2600000,2689,3231],["Mogadishu","SO",2587183,3101,491],["Kumasi","GH",2544530,1948,1395],["Bandung","ID",2528163,2472,2325],["Gujranwala","PK",2511118,2964,791],["Medan","ID",2486283,2173,2236],["Lucknow","IN",2472011,2609,986],["Xining","CN",2467965,2728,376],["Ouagadougou","BF",2415266,2953,782],["Nagpur","IN",2405665,2766,1112],["Fortaleza","BR",2400000,2645,1475],["Cali","CO",2392877,1712,1693],["Perth","AU",2384371,2905,824],["Daegu","KR",2365523,2525,1038],["Algiers","DZ",2364230,2887,663],["Nanchang","CN",2357839,1848,1557],["Baku","AZ",2351300,2124,234],["Nagoya","JP",2332176,1958,1689],["Rome","IT",2318895,2425,817],["Queens","US",2316841,2531,1135],["Houston","US",2314157,2575,1125],["Mashhad","IR",2307177,2879,260],["Shaoxing","CN",2300000,1877,1321],["Nantong","CN",2273326,2053,1065],["Baoshan","CN",2265900,1987,1132],["Kowloon","HK",2232339,1999,2119],["Gaziantep","TR",2222415,3130,538],["Lubumbashi","CD",2221925,2726,1241],["Manaus","BR",2219580,1772,2268],["Lusaka","ZM",2212301,2889,822],["Brasília","BR",2207718,2355,1561],["Zhuhai","CN",2207090,1946,1758],["Santo Domingo","DO",2201941,2772,1460],["Lomé","TG",2188376,2347,1145],["Multan","PK",2169915,3075,188],["Havana","CU",2163824,2948,1332],["Depok","ID",2163635,2668,2952],["Ordos","CN",2153638,2904,394],["Paris","FR",2138551,1738,650],["Coimbatore","IN",2136916,2408,1040],["Qingyang","CN",2125400,2273,534],["Port Harcourt","NG",2120000,1374,2479],["Pretoria","ZA",2112693,3192,684],["Córdoba","AR",2106734,2591,743],["Mbuji-Mayi","CD",2101332,2247,1481],["Aleppo","SY",2098210,2996,439],["Kunshan","CN",2092496,1984,1109],["Al Mawşil al Jadīdah","IQ",2065597,3215,442],["Zunyi","CN",2037775,1277,1107],["La Paz","BO",2004652,2349,599],["Lianyungang","CN",2001009,2301,933],["Medellín","CO",1999979,1824,2648],["Puning","CN",1998619,1992,1663],["Indore","IN",1994397,2849,964],["Brazzaville","CG",1982000,1920,1386],["Tashkent","UZ",1978028,2791,503],["Ganzhou","CN",1977253,1802,1469],["Almaty","KZ",1977011,2461,252],["Khartoum","SD",1974647,3514,148],["Hamburg","DE",1973896,1535,744],["Sapporo","JP",1973832,1690,1152],["Songjiang","CN",1973500,1953,1146],["Accra","GH",1963264,2236,888],["Curitiba","BR",1948626,1654,1477],["Sanaa","YE",1937451,2919,509],["Conakry","GN",1928389,2187,3552],["Tangerang","ID",1927815,2644,2339],["Tijuana","MX",1922523,3068,230],["Hyderabad","PK",1921275,3309,173],["Beirut","LB",1916100,2934,725],["Jieyang","CN",1899394,1981,1563],["Jilin","CN",1895865,2509,642],["Jiading","CN",1886100,1985,1123],["Bucharest","RO",1877155,2074,600],["Camayenne","GN",1871242,2187,3552],["Kakamega","KE",1867579,2757,1882],["Shangqiu","CN",1859723,2277,703],["Nanchong","CN",1858875,1292,1038],["Tainan","TW",1856642,1993,1871],["Kaduna","NG",1850000,2686,1154],["Omdurman","SD",1849659,3509,141],["Davao","PH",1848947,2295,1893],["Thāne","IN",1841488,2688,2512],["Iztapalapa","MX",1835486,2019,635],["Diyarbakır","TR",1833684,3018,520],["Santa Cruz de la Sierra","BO",1831434,2665,1243],["Vadodara","IN",1822221,2918,1044],["Adana","TR",1816750,3008,700],["Nanyang","CN",1811812,2008,787],["Abu Dhabi","AE",1807000,3444,59],["Palembang","ID",1801367,2423,2398],["Sharjah","AE",1800000,3412,105],["Bhopal","IN",1798218,2800,1185],["Jiangmen","CN",1795459,1875,1797],["Benin City","NG",1782000,1763,2011],["Jiangyin","CN",1779515,2032,1070],["Fuyang","CN",1768947,2135,895],["Montréal","CA",1762949,1970,1025],["Bayan Nur","CN",1760000,3007,160],["Chengtangcun","CN",1756300,2367,785],["Maracaibo","VE",1752602,2589,557],["Chaozhou","CN",1750945,1991,1523],["Minsk","BY",1742124,1741,640],["Budapest","HU",1741041,1900,536],["Qingyuan","CN",1738424,1758,1931],["Tai’an","CN",1735425,2505,779],["Rasapūdipalem","IN",1728128,2555,1065],["Pimpri-Chinchwad","IN",1727692,2785,1516],["Caloocan","PH",1712945,2406,2250],["Warsaw","PL",1702139,1588,522],["Soweto","ZA",1695047,3202,714],["Semarang","ID",1694740,2837,2110],["Puebla","MX",1692181,2428,809],["Vienna","AT",1691468,1746,565],["Barcelona","ES",1686208,2382,613],["Patna","IN",1684297,2239,1147],["Mosul","IQ",1683000,3189,458],["Kallakurichi","IN",1682687,2530,975],["Kampala","UG",1680600,2447,1369],["Changshu","CN",1677050,2000,1091],["Rabat","MA",1655753,2870,566],["Recife","BR",1653461,2579,2328],["Phoenix","US",1650070,3817,198],["Suzhou","CN",1647642,2197,861],["Ecatepec de Morelos","MX",1645352,2106,625],["Lu’an","CN",1644344,2038,1160],["Valencia","VE",1619470,2697,1296],["Ludhiana","IN",1618879,2766,720],["Yancheng","CN",1615717,2181,1008],["Novosibirsk","RU",1612833,2108,455],["Erbil","IQ",1612700,3168,460],["Fukuoka","JP",1612392,1787,1731],["Taizhou","CN",1607108,2079,1054],["Daqing","CN",1604027,2665,407],["Kisangani","CD",1602144,1979,1762],["Manila","PH",1600000,2363,2264],["Wuhu","CN",1598165,2008,1167],["Santiago de Querétaro","MX",1594212,2541,542],["Dazhou","CN",1589435,1394,1214],["León de los Aldama","MX",1579803,2139,625],["Makkah","SA",1578722,3279,74],["Philadelphia","US",1573916,2466,1120],["Phnom Penh","KH",1573544,2551,1393],["Guilin","CN",1572300,1565,1788],["Damascus","SY",1569394,3077,489],["Quetta","PK",1565546,3332,262],["Zhaoqing","CN",1553109,1814,1705],["Onitsha","NG",1553000,1761,1992],["Mianyang","CN",1550000,1390,951],["Auckland","NZ",1547200,2023,1208],["Isfahan","IR",1547164,3192,123],["Wanzhou","CN",1545900,1406,1253],["Astana","KZ",1544142,2443,314],["Harare","ZW",1542813,2929,887],["Monrovia","LR",1542549,1766,3262],["Putian","CN",1539389,1859,1285],["Kawasaki","JP",1538262,1827,1432],["Goiânia","BR",1536097,2517,1550],["San Antonio","US",1526656,2573,700],["Kobe","JP",1525152,1799,1422],["Jinzhou","CN",1524362,2679,561],["Stockholm","SE",1515017,1490,510],["Ciudad Juárez","MX",1512450,3673,221],["Cần Thơ","VN",1507187,2018,1828],["Munich","DE",1505005,1660,849],["Khulna","BD",1500689,2094,1874],["Belém","BR",1499641,2211,2835],["Yekaterinburg","RU",1495066,1870,538],["Porto Alegre","BR",1488252,2219,1363],["Manhattan","US",1487536,2531,1135],["Nashik","IN",1486053,2760,1037],["Taizhou","CN",1485502,1812,1524],["Asunción","PY",1482200,2761,1345],["Yiwu","CN",1481384,1863,1423],["Zapopan","MX",1476491,2650,975],["Makassar","ID",1474393,2848,3249],["Adelaide","AU",1469163,2685,539],["Quanzhou","CN",1469157,1959,1300],["Madurai","IN",1465625,2438,1046],["Jinhua","CN",1463990,1895,1428],["Kyoto","JP",1463723,1675,1552],["Cixi","CN",1457510,1892,1277],["Changde","CN",1457419,1580,1304],["Kuala Lumpur","MY",1453975,2212,2367],["Kayseri","TR",1452458,2867,379],["Kaifeng","CN",1451741,2277,641],["Karaj","IR",1448075,2739,391],["Kathmandu","NP",1442271,1980,2101],["Daejeon","KR",1441203,2416,1257],["Baoji","CN",1437802,1947,669],["Suqian","CN",1437685,2226,902],["Liuzhou","CN",1436599,1579,1471],["Tirunelveli","IN",1435844,2414,771],["Konya","TR",1433861,2911,394],["Zhangjiagang","CN",1432044,2032,1072],["Agra","IN",1430055,2704,738],["South Tangerang","ID",1429529,2643,2208],["Tabriz","IR",1424641,2708,330],["Kharkiv","UA",1421125,1752,528],["Xinyang","CN",1416800,2024,1112],["Jinjiang","CN",1416151,1985,1278],["Faridabad","IN",1414050,2686,751],["Bozhou","CN",1409436,2226,799],["Qujing","CN",1408500,1935,1063],["San Diego","US",1404452,3072,262],["Gwangju","KR",1401235,2270,1418],["Zhanjiang","CN",1400709,1924,1604],["Fushun","CN",1400646,2537,734],["Rājkot","IN",1390640,3077,686],["Luoyang","CN",1390581,2197,603],["Guadalajara","MX",1385629,2650,975],["The Bronx","US",1385108,2514,1165],["Guankou","CN",1380000,1646,1492],["Huế","VN",1380000,2261,2230],["Milan","IT",1371498,1920,1050],["Najafgarh","IN",1365000,2704,695],["Lianjiang","CN",1363470,1887,1648],["N'Djamena","TD",1359526,3164,554],["Handan","CN",1358318,2451,541],["Bannu","PK",1357890,2991,325],["Yichang","CN",1350150,1628,1148],["Antananarivo","MG",1349501,2535,1446],["Heze","CN",1346717,2359,642],["Guarulhos","BR",1345364,1784,1324],["Abobo","CI",1340083,2114,1545],["Jamshedpur","IN",1339438,2229,1366],["Douala","CM",1338082,1706,3476],["Antalya","TR",1335002,3106,1026],["Basrah","IQ",1326564,3039,145],["Dallas","US",1326087,2789,910],["Saitama","JP",1324854,1871,1307],["Niamey","NE",1323691,2907,547],["Liupanshui","CN",1320825,1678,1117],["Taguig","PH",1308085,2363,2264],["Maoming","CN",1307802,1922,1797],["Calgary","CA",1306784,2299,413],["Tripoli","LY",1302947,3210,288],["Madinah","SA",1300000,3605,61],["Yaoundé","CM",1299369,1779,1635],["Batam","ID",1296960,2038,2414],["Qinzhou","CN",1296300,1774,2035],["Luohe","CN",1294974,2152,810],["Xiangyang","CN",1294733,1860,866],["Yangjiang","CN",1292987,1929,2208],["Yixing","CN",1285785,1990,1125],["Pimpri","IN",1284606,2785,1516],["Da Nang","VN",1276000,2234,1947],["Amman","JO",1275857,3309,332],["Budta","PH",1273715,2292,2017],["Belgrade","RS",1273651,1984,688],["Biên Hòa","VN",1272235,1737,1791],["Kananga","CD",1271704,2114,1558],["Qingpu","CN",1271424,1954,1147],["Montevideo","UY",1270737,2479,894],["Xuchang","CN",1265536,2197,706],["Kalyān","IN",1262255,2702,2853],["Zigong","CN",1262064,1362,1167],["Nizhniy Novgorod","RU",1259013,1808,598],["Jepara","ID",1257912,2764,2867],["Maputo","MZ",1254837,2829,791],["Xuzhou","CN",1253991,2263,848],["Dammam","SA",1252523,3299,88],["Ra’s Bayrūt","LB",1251739,2934,725],["Neijiang","CN",1251095,1306,1074],["Shiraz","IR",1249942,3285,303],["Heshan","CN",1249807,1592,1334],["Dombivali","IN",1247327,2702,2853],["Kazan","RU",1243500,1885,530],["Jining","CN",1241012,2404,680],["Barquisimeto","VE",1240714,2591,938],["Shubrā al Khaymah","EG",1240289,3331,21],["Putuo","CN",1239100,1970,1134],["Port-au-Prince","HT",1234742,2779,1289],["Suwon","KR",1234582,2396,1306],["Liaocheng","CN",1229768,2495,589],["Jinzhong","CN",1226617,2552,508],["Callao","PE",1226200,1507,17],["Meerut","IN",1223184,2661,865],["Virār","IN",1222390,2705,2395],["Nowrangapur","IN",1220946,2536,1420],["Karbala","IQ",1218732,3588,120],["Changzhi","CN",1214940,2398,586],["Tianshui","CN",1212791,2027,551],["Sadr City","IQ",1211849,3475,177],["Yangpu","CN",1210800,1973,1126],["Mombasa","KE",1208333,2942,1115],["Mandalay","MM",1208099,2379,888],["Srinagar","IN",1206419,2765,683],["Barranquilla","CO",1206319,2483,728],["Chelyabinsk","RU",1202371,2090,452],["Mérida","MX",1201000,2650,996],["Hiroshima","JP",1200754,1896,1607],["Santiago de los Caballeros","DO",1200000,2505,1088],["Shymkent","KZ",1200000,2813,539],["Weinan","CN",1199290,2018,617],["Ghāziābād","IN",1199191,2676,786],["Matola","MZ",1198988,2810,754],["Dhanbad","IN",1196214,2188,1299],["Arequipa","PE",1195700,3244,88],["Hong Kong Island","HK",1195529,1999,2119],["Fes","MA",1191905,2836,537],["Gustavo Adolfo Madero","MX",1185772,2019,635],["Nouakchott","MR",1184530,2910,113],["Jiaxing","CN",1180000,1923,1196],["Aurangabad","IN",1175116,2785,723],["Zhongwei","CN",1174600,2697,195],["Omsk","RU",1172070,2172,389],["Pikine","SN",1170791,2973,458],["Pekanbaru","ID",1167599,2231,2564],["Panjin","CN",1166481,2629,625],["Bandar Lampung","ID",1166066,2469,1978],["Prague","CZ",1165581,1640,525],["Varanasi","IN",1164404,2489,1000],["Jiujiang","CN",1164268,1906,1534],["Samara","RU",1163399,2052,527],["Aba","NG",1160000,1489,2399],["Amritsar","IN",1159227,2816,699],["Birmingham","GB",1157603,1356,741],["Copenhagen","DK",1153615,1652,634],["Sofia","BG",1152556,2022,612],["Anyang","CN",1146839,2409,572],["Yerevan","AM",1144700,2484,370],["Luohu District","CN",1143801,1941,2063],["Vijayawada","IN",1143232,2673,965],["Fengxiang","CN",1140872,1941,1157],["Bijie","CN",1137383,1523,956],["Monterrey","MX",1135512,1786,637],["Kigali","RW",1132686,1991,1094],["Rostov-on-Don","RU",1130305,2086,580],["Zhuzhou","CN",1129687,1606,1413],["Rui’an","CN",1125000,1797,1607],["Malingao","PH",1121974,2311,1937],["Touba","SN",1120824,3033,485],["Ufa","RU",1120547,1945,539],["Ranchi","IN",1120374,2249,1404],["Zoucheng","CN",1116692,2408,717],["Shangrao","CN",1116486,1879,1745],["Lilongwe","MW",1115815,2756,842],["Huaibei","CN",1113321,2230,832],["Maiduguri","NG",1110000,3005,568],["Xuhui","CN",1109800,1970,1134],["Meishan","CN",1107742,1398,1354],["Mwanza","TZ",1104521,2790,1048],["Wuchang","CN",1102188,1965,1245],["Ulsan","KR",1098421,2314,1261],["Sendai","JP",1096704,1835,1166],["Krasnoyarsk","RU",1090811,1830,562],["Fuzhou","CN",1089888,1821,1648],["Guigang","CN",1086327,1720,1622],["Oslo","NO",1082575,1579,815],["Jabalpur","IN",1081677,2720,1241],["Ilorin","NG",1080000,2221,1233],["Aden","YE",1079670,3134,57],["Bogor","ID",1078351,2626,4020],["Ciudad Nezahualcoyotl","MX",1077208,2019,635],["Hengyang","CN",1075516,1607,1341],["Prayagraj","IN",1073438,2659,960],["Trujillo","PE",1067700,1934,15],["Visakhapatnam","IN",1063178,2555,1065],["Goyang-si","KR",1061752,2321,1343],["Yulin","CN",1056743,1792,1664],["Jodhpur","IN",1056191,3095,374],["Gwalior","IN",1054420,2737,829],["Jingzhou","CN",1052282,1719,1107],["Gqeberha","ZA",1050078,2741,569],["Tbilisi","GE",1049498,2039,629],["Voronezh","RU",1047549,1893,549],["Xinxiang","CN",1047088,2311,586],["Yichun","CN",1045952,1717,1613],["Sokoto","NG",1040000,2791,646],["Jos","NG",1040000,2648,1275],["Tangier","MA",1035141,2824,739],["Teni","IN",1034724,2318,1664],["Xianyang","CN",1034081,1943,581],["Mexicali","MX",1032686,3649,69],["Pointe-Noire","CG",1032000,1724,1213],["Maceió","BR",1031597,2549,2136],["Campinas","BR",1031554,2474,1320],["Sanya","CN",1031396,2139,1388],["Rangpur","BD",1031388,2196,2220],["Kirkuk","IQ",1031000,3316,383],["Ashgabat","TM",1030063,2702,228],["Shaoguan","CN",1028460,1755,1572],["Howrah","IN",1027672,2083,1550],["Raipur","IN",1027264,2629,1166],["Changwon","KR",1025702,2400,1392],["Longyan","CN",1025087,1847,1724],["Köln","DE",1024621,1455,813],["Dublin","IE",1024027,1383,1043],["Tiruchirappalli","IN",1022518,2496,896],["Yongzhou","CN",1020715,1578,1357],["Brussels","BE",1019022,1622,813],["Zamboanga","PH",1018849,2212,1830],["Ottawa","CA",1017449,2002,892],["Huzhou","CN",1015937,1940,1157],["Xinyi","CN",1014577,1833,1800],["Volgograd","RU",1013533,2116,374],["Khartoum North","SD",1012211,3514,148],["Edmonton","CA",1010899,2198,464],["Odesa","UA",1010537,2124,441],["Wuwei","CN",1010295,2819,172],["Jacksonville","US",1009833,2851,1205],["Fort Worth","US",1008106,2827,802],["Yishui","CN",1007100,2438,796],["Hanzhong","CN",1006557,1669,906],["Hezhou","CN",1005490,1703,1630],["Pest","HU",1001748,1875,552],["Kota","IN",1001694,2869,769],["Shivaji Nagar","IN",1000000,2801,799],["Zhu Cheng City","CN",1000000,2452,796]]},"big_cc":{"CN":"People's Republic of China","CD":"Democratic Republic of the Congo","TR":"Turkey","NG":"Nigeria","VN":"Vietnam","PK":"Pakistan","IN":"India","BR":"Brazil","MX":"Mexico","RU":"Russia","BD":"Bangladesh","KR":"South Korea","JP":"Japan","EG":"Egypt","ZA":"South Africa","GB":"United Kingdom","US":"United States of America","ID":"Indonesia","TW":"Taiwan","PE":"Peru","CO":"Colombia","HK":"Hong Kong","IQ":"Iraq","IR":"Iran","CI":"Ivory Coast","AU":"Australia","SG":"Singapore","TZ":"Tanzania","TH":"Thailand","CL":"Chile","SA":"Saudi Arabia","MM":"Myanmar","AF":"Afghanistan","KE":"Kenya","ML":"Mali","ET":"Ethiopia","AE":"United Arab Emirates","MA":"Morocco","DE":"Germany","ES":"Spain","KP":"North Korea","PH":"Philippines","VE":"Venezuela","UA":"Ukraine","AR":"Argentina","CA":"Canada","EC":"Ecuador","AO":"Angola","SN":"Senegal","SO":"Somalia","GH":"Ghana","BF":"Burkina Faso","DZ":"Algeria","AZ":"Azerbaijan","IT":"Italy","ZM":"Zambia","DO":"Dominican Republic","TG":"Togo","CU":"Cuba","FR":"France","SY":"Syria","BO":"Bolivia","CG":"Republic of the Congo","UZ":"Uzbekistan","KZ":"Kazakhstan","SD":"Sudan","YE":"Yemen","GN":"Guinea","LB":"Lebanon","RO":"Romania","BY":"Belarus","HU":"Hungary","PL":"Poland","AT":"Austria","UG":"Uganda","KH":"Cambodia","NZ":"New Zealand","ZW":"Zimbabwe","LR":"Liberia","SE":"Sweden","PY":"Paraguay","MY":"Malaysia","NP":"Nepal","TD":"Chad","MG":"Madagascar","CM":"Cameroon","NE":"Niger","LY":"Libya","JO":"Jordan","RS":"Serbia","UY":"Uruguay","MZ":"Mozambique","HT":"Haiti","MR":"Mauritania","CZ":"Czech Republic","DK":"Denmark","BG":"Bulgaria","AM":"Armenia","RW":"Rwanda","MW":"Malawi","NO":"Norway","GE":"Georgia","TM":"Turkmenistan","IE":"Ireland","BE":"Belgium"},"london":{"sun":1454.0,"rain":628.0,"sun_rank":558,"rain_rank":416,"sun_pct_land":0.0466,"rain_pct_land":0.5593,"sun_month":[48.7,64.9,106.7,141.4,186.5,191.6,185.0,181.2,139.9,103.5,62.4,42.5],"rain_month":[55.0,37.5,48.9,47.2,51.5,52.2,48.8,55.6,54.7,58.1,58.6,59.4],"big_wetter":415,"big_duller":15},"uk_cities":[{"name":"London","pop":8961989,"sun_h":1454.0,"rain_mm":628.0},{"name":"Birmingham","pop":1157603,"sun_h":1356.0,"rain_mm":741.0},{"name":"Glasgow","pop":626410,"sun_h":1225.0,"rain_mm":1243.0},{"name":"Manchester","pop":568996,"sun_h":1290.0,"rain_mm":851.0},{"name":"Sheffield","pop":556500,"sun_h":1296.0,"rain_mm":740.0},{"name":"Leeds","pop":536280,"sun_h":1265.0,"rain_mm":731.0},{"name":"Edinburgh","pop":514990,"sun_h":1255.0,"rain_mm":738.0},{"name":"Liverpool","pop":496770,"sun_h":1360.0,"rain_mm":760.0},{"name":"Bristol","pop":479024,"sun_h":1477.0,"rain_mm":899.0},{"name":"Cardiff","pop":372089,"sun_h":1507.0,"rain_mm":1002.0},{"name":"Leicester","pop":368600,"sun_h":1318.0,"rain_mm":644.0},{"name":"Bradford","pop":366187,"sun_h":1233.0,"rain_mm":885.0},{"name":"Belfast","pop":348005,"sun_h":1310.0,"rain_mm":981.0},{"name":"Coventry","pop":345324,"sun_h":1367.0,"rain_mm":669.0},{"name":"Brent","pop":329100,"sun_h":1470.0,"rain_mm":664.0},{"name":"Birkenhead","pop":325264,"sun_h":1365.0,"rain_mm":721.0},{"name":"Nottingham","pop":323632,"sun_h":1309.0,"rain_mm":629.0},{"name":"Islington","pop":319143,"sun_h":1454.0,"rain_mm":628.0},{"name":"Reading","pop":318014,"sun_h":1488.0,"rain_mm":672.0},{"name":"Kingston upon Hull","pop":314018,"sun_h":1394.0,"rain_mm":658.0},{"name":"Preston","pop":313332,"sun_h":1386.0,"rain_mm":973.0},{"name":"Swansea","pop":300352,"sun_h":1495.0,"rain_mm":1239.0},{"name":"Newcastle upon Tyne","pop":300125,"sun_h":1317.0,"rain_mm":624.0},{"name":"Southend-on-Sea","pop":295310,"sun_h":1529.0,"rain_mm":534.0},{"name":"Brighton","pop":283870,"sun_h":1621.0,"rain_mm":929.0},{"name":"Derby","pop":270468,"sun_h":1308.0,"rain_mm":694.0},{"name":"Southampton","pop":269781,"sun_h":1601.0,"rain_mm":751.0},{"name":"Wolverhampton","pop":263700,"sun_h":1309.0,"rain_mm":745.0},{"name":"Plymouth","pop":260203,"sun_h":1620.0,"rain_mm":1301.0},{"name":"Stoke-on-Trent","pop":258366,"sun_h":1269.0,"rain_mm":809.0},{"name":"Milton Keynes","pop":256385,"sun_h":1358.0,"rain_mm":608.0},{"name":"City of Westminster","pop":247614,"sun_h":1468.0,"rain_mm":652.0},{"name":"Northampton","pop":245899,"sun_h":1347.0,"rain_mm":614.0},{"name":"Oldham","pop":237110,"sun_h":1217.0,"rain_mm":1257.0},{"name":"Bexley","pop":228000,"sun_h":1429.0,"rain_mm":656.0},{"name":"Luton","pop":225262,"sun_h":1412.0,"rain_mm":650.0},{"name":"Barking","pop":218534,"sun_h":1422.0,"rain_mm":591.0},{"name":"Archway","pop":215667,"sun_h":1454.0,"rain_mm":628.0},{"name":"Portsmouth","pop":208100,"sun_h":1746.0,"rain_mm":717.0},{"name":"Swindon","pop":201669,"sun_h":1455.0,"rain_mm":690.0},{"name":"Dudley","pop":199059,"sun_h":1309.0,"rain_mm":745.0},{"name":"Aberdeen","pop":198590,"sun_h":1354.0,"rain_mm":774.0},{"name":"Sutton","pop":187600,"sun_h":1499.0,"rain_mm":624.0},{"name":"St Helens","pop":183200,"sun_h":1339.0,"rain_mm":820.0},{"name":"Ipswich","pop":178835,"sun_h":1562.0,"rain_mm":573.0},{"name":"Wigan","pop":175405,"sun_h":1289.0,"rain_mm":1118.0},{"name":"Croydon","pop":173314,"sun_h":1468.0,"rain_mm":652.0},{"name":"Warrington","pop":172330,"sun_h":1313.0,"rain_mm":867.0},{"name":"Walsall","pop":172141,"sun_h":1325.0,"rain_mm":739.0},{"name":"Mansfield","pop":171958,"sun_h":1291.0,"rain_mm":734.0},{"name":"Sunderland","pop":170134,"sun_h":1334.0,"rain_mm":627.0},{"name":"Ilford","pop":168168,"sun_h":1422.0,"rain_mm":591.0},{"name":"Slough","pop":164793,"sun_h":1447.0,"rain_mm":680.0},{"name":"Bournemouth","pop":163600,"sun_h":1675.0,"rain_mm":789.0},{"name":"Peterborough","pop":163379,"sun_h":1430.0,"rain_mm":556.0},{"name":"Oxford","pop":162100,"sun_h":1455.0,"rain_mm":638.0},{"name":"Newport","pop":161506,"sun_h":1418.0,"rain_mm":989.0},{"name":"Enfield Town","pop":156858,"sun_h":1454.0,"rain_mm":628.0},{"name":"York","pop":156135,"sun_h":1316.0,"rain_mm":620.0},{"name":"Telford","pop":155570,"sun_h":1287.0,"rain_mm":679.0},{"name":"Poole","pop":151500,"sun_h":1675.0,"rain_mm":789.0}],"people":{"pop":4076103891.0,"share_sunnier_than_london":0.9571,"share_wetter_than_london":0.7211,"median_sun":2345.0,"median_rain":986.0},"season":{"peak_outside_summer":0.2537,"peak_outside_summer_tropics":0.6341,"peak_outside_summer_extra":0.0306,"wettest_is_dullest":0.1484,"mumbai_peak_sun":"May","mumbai_jul_sun":89.6,"mumbai_jul_rain":959.3,"mumbai_max_sun":304.5,"london_jul_sun":185.0},"profiles":{"Mumbai":{"country":"India","sun":[270.2,261.3,279.2,290.3,304.5,165.8,89.6,86.5,172.9,244.1,247.9,257.1],"rain":[0.5,0.6,0.1,0.5,12.0,550.6,959.3,623.0,346.2,79.1,10.2,2.8],"sun_h":2669.0,"rain_mm":2585.0},"London":{"country":"United Kingdom","sun":[48.7,64.9,106.7,141.4,186.5,191.6,185.0,181.2,139.9,103.5,62.4,42.5],"rain":[55.0,37.5,48.9,47.2,51.5,52.2,48.8,55.6,54.7,58.1,58.6,59.4],"sun_h":1454.0,"rain_mm":628.0},"Lima":{"country":"Peru","sun":[181.2,189.6,212.0,206.0,138.6,54.3,39.8,38.5,52.0,96.4,131.2,167.3],"rain":[0.6,0.5,0.5,0.5,0.8,2.5,2.6,3.2,2.4,0.7,0.6,2.1],"sun_h":1507.0,"rain_mm":17.0},"Kolkata":{"country":"India","sun":[206.0,202.1,225.7,228.8,213.5,118.2,89.0,99.2,113.6,183.3,192.4,205.8],"rain":[12.0,22.8,31.7,59.2,109.2,268.0,324.6,323.8,271.3,128.9,19.0,8.8],"sun_h":2078.0,"rain_mm":1579.0},"Singapore":{"country":"Singapore","sun":[171.7,180.4,193.0,180.8,189.1,185.0,190.0,182.5,159.2,159.2,133.3,132.4],"rain":[200.3,177.3,197.8,200.5,176.0,157.2,155.6,165.9,172.4,197.6,246.4,272.3],"sun_h":2057.0,"rain_mm":2319.0},"Cairo":{"country":"Egypt","sun":[215.6,210.1,261.5,277.9,318.3,355.8,349.9,339.1,283.7,282.6,236.7,199.9],"rain":[5.2,3.4,2.2,1.1,0.9,0.0,0.0,0.0,0.0,0.6,3.4,4.5],"sun_h":3331.0,"rain_mm":21.0}},"similar":{"sd_sun":79.9046,"sd_rootrain":4.5492,"default_threshold":0.5,"examples":{"London":{"name":"London","country":"United Kingdom","share_land":0.0215,"twins":[{"name":"Münster","country":"Germany","d":0.2299,"pop":308258,"flipped":false},{"name":"Utrecht","country":"Netherlands","d":0.2403,"pop":376435,"flipped":false},{"name":"Antwerp","country":"Belgium","d":0.2687,"pop":529247,"flipped":false},{"name":"Łódź","country":"Poland","d":0.3262,"pop":639890,"flipped":false},{"name":"Marne La Vallée","country":"France","d":0.3352,"pop":318325,"flipped":false},{"name":"Malmö","country":"Sweden","d":0.3783,"pop":362133,"flipped":false}]},"Lima":{"name":"Lima","country":"Peru","share_land":0.0001,"twins":[{"name":"Constanţa","country":"Romania","d":1.1899,"pop":317832,"flipped":true},{"name":"Benguela","country":"Angola","d":1.19,"pop":555124,"flipped":false},{"name":"Sumgayit","country":"Azerbaijan","d":1.2203,"pop":427000,"flipped":true},{"name":"Gujangbagh","country":"People's Republic of China","d":1.2252,"pop":408894,"flipped":true},{"name":"Makhachkala","country":"Russia","d":1.3041,"pop":596356,"flipped":true},{"name":"Santa Catarina","country":"Mexico","d":1.3247,"pop":304052,"flipped":true}]},"Mumbai":{"name":"Mumbai","country":"India","share_land":0.0001,"twins":[{"name":"Bissau","country":"Guinea-Bissau","d":1.138,"pop":439704,"flipped":false},{"name":"Hlaingthaya","country":"Myanmar","d":1.2273,"pop":687867,"flipped":false},{"name":"Conakry","country":"Guinea","d":1.2743,"pop":1928389,"flipped":false},{"name":"Bharatpur","country":"Nepal","d":1.2838,"pop":369377,"flipped":false},{"name":"Bahir Dar","country":"Ethiopia","d":1.2919,"pop":350000,"flipped":false},{"name":"Angeles City","country":"Philippines","d":1.3544,"pop":483452,"flipped":false}]},"Cairo":{"name":"Cairo","country":"Egypt","share_land":0.025,"twins":[{"name":"Dammam","country":"Saudi Arabia","d":0.3989,"pop":1252523,"flipped":false},{"name":"Doha","country":"Qatar","d":0.4029,"pop":344939,"flipped":false},{"name":"Yazd","country":"Iran","d":0.4312,"pop":477905,"flipped":false},{"name":"Abu Dhabi","country":"United Arab Emirates","d":0.4703,"pop":1807000,"flipped":false},{"name":"Al Aḩmadī","country":"Kuwait","d":0.4929,"pop":637411,"flipped":false},{"name":"Mexicali","country":"Mexico","d":0.5235,"pop":1032686,"flipped":false}]},"Singapore":{"name":"Singapore","country":"Singapore","share_land":0.006,"twins":[{"name":"Johor Bahru","country":"Malaysia","d":0.0517,"pop":858118,"flipped":false},{"name":"Batam","country":"Indonesia","d":0.1121,"pop":1296960,"flipped":false},{"name":"Manizales","country":"Colombia","d":0.5023,"pop":434403,"flipped":true},{"name":"Iquitos","country":"Peru","d":0.5662,"pop":377609,"flipped":false},{"name":"Davao","country":"Philippines","d":0.5724,"pop":1848947,"flipped":true},{"name":"Barra da Tijuca","country":"Brazil","d":0.586,"pop":421438,"flipped":false}]}}},"wc":{"cells":566058,"pearson":0.9765,"spearman":0.9663,"median_diff":-3.9,"median_absdiff":28.4,"median_rel_absdiff":0.0649,"same_tercile":0.9352,"same_fixed":0.9383,"mean_cru":803.8965,"mean_wc":795.6935},"encoding":{"sun_max_err_month":1.0,"rain_max_err_month":8.76,"sun_max_err_year":9.0284,"rain_max_err_year":25.2601,"rain_med_rel_err_year":0.0035},"world_month":{"sun":[166.1974,169.1396,205.0536,223.2459,245.8774,245.0079,249.9927,233.3531,203.6383,193.0381,169.2491,160.9572],"rain":[64.17,59.9676,66.0576,62.9908,65.3056,70.6535,79.6911,78.8756,69.2278,63.8927,60.2576,62.7546]},"hist":{"sun_edges":[0,100,200,300,400,500,600,700,800,900,1000,1100,1200,1300,1400,1500,1600,1700,1800,1900,2000,2100,2200,2300,2400,2500,2600,2700,2800,2900,3000,3100,3200,3300,3400,3500,3600,3700,3800,3900,4000,4100,4200],"rain_edges":[0,50,100,150,200,250,300,400,500,600,700,800,900,1000,1200,1400,1600,1800,2000,2500,3000,3500,4000,5000,6000,8000,10000],"sun":[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0001,0.0004,0.0008,0.0018,0.0068,0.0106,0.0149,0.022,0.0274,0.0404,0.0541,0.0558,0.0541,0.0509,0.0452,0.0433,0.0397,0.0427,0.0475,0.0567,0.0539,0.0467,0.0494,0.0485,0.0391,0.0297,0.0306,0.0292,0.0209,0.0223,0.012,0.0022,0.0002,0.0,0.0],"rain":[0.056,0.0361,0.0432,0.0438,0.0473,0.0483,0.0911,0.0883,0.0831,0.061,0.0429,0.036,0.0327,0.0605,0.0495,0.0416,0.0329,0.0196,0.0442,0.0232,0.0128,0.0033,0.0017,0.0004,0.0003,0.0]},"months":["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]};
+const el = BV.el;
+const fmt = n => n == null ? "n/a" : Math.round(n).toLocaleString("en-GB");
+const pc = (x, d = 0) => (x * 100).toFixed(d) + "%";
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const tip = document.getElementById("tip");
+function showTip(h, x, y) { tip.innerHTML = h; tip.style.display = "block"; const w = tip.offsetWidth; x = Math.max(w / 2 + 8, Math.min(innerWidth - w / 2 - 8, x)); tip.style.left = x + scrollX + "px"; tip.style.top = y + scrollY + "px"; }
+function hideTip() { tip.style.display = "none"; }
+document.addEventListener("click", hideTip);
+const redraws = [];
+function resp(box, render) { let last = 0; const go = force => { const w = Math.max(280, Math.round(box.clientWidth)); if (!force && Math.abs(w - last) < 4) return; last = w; box.innerHTML = ""; render(w, w < 560); }; new ResizeObserver(() => go()).observe(box); go(); redraws.push(() => go(true)); }
+const lbl = (svg, x, y, s, cls = "lab", anchor = "start") => { const t = el("text", { x, y, class: cls, "text-anchor": anchor }, svg); t.textContent = s; return t; };
+const isDark = () => { const r = document.documentElement; return r.dataset.theme ? r.dataset.theme === "dark" : matchMedia("(prefers-color-scheme: dark)").matches; };
+const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const MON = R.months, DAYS = [31, 28.25, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+const PERIODS = { year: [0,1,2,3,4,5,6,7,8,9,10,11], DJF: [11,0,1], MAM: [2,3,4], JJA: [5,6,7], SON: [8,9,10] };
+MON.forEach((m, k) => PERIODS["m" + k] = [k]);
+const PNAME = { year: "Whole year", DJF: "December to February", MAM: "March to May", JJA: "June to August", SON: "September to November" };
+const MONLONG = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+MONLONG.forEach((m, k) => PNAME["m" + k] = m);
+const NC = 2160, ROWS = 900;
+const S = { period: "year", n: 3, mode: "quant", custom: null, only: null, place: null, dist: null, twinsOn: false, thr: R.similar.default_threshold, flip: true };
+let G = null;      // grid: {n, pix, w, sun, rain, cellOf}
+let CITIES = null; // place list
+const cache = {};
+
+/* hero mark: the 3 x 3 palette */
+(function () {
+  const P = BV.palette(3), g = document.getElementById("heroMark");
+  for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) el("rect", { x: 2 + i * 43, y: 2 + (2 - j) * 43, width: 41, height: 41, fill: P[i][j].hex, rx: 2 }, g);
+})();
+
+/* == load the grids (8 PNGs: 3 months each in R, G, B) == */
+function loadImg(src) { return new Promise((ok, bad) => { const im = new Image(); im.onload = () => ok(im); im.onerror = bad; im.src = src; }); }
+async function loadGrid() {
+  const names = []; for (const v of ["sun", "rain"]) for (let q = 1; q <= 4; q++) names.push(`data/${v}_q${q}.png`);
+  const imgs = await Promise.all(names.map(loadImg));
+  const cv = document.createElement("canvas"); cv.width = NC; cv.height = ROWS;
+  const ctx = cv.getContext("2d", { willReadFrequently: true });
+  const read = im => { ctx.clearRect(0, 0, NC, ROWS); ctx.drawImage(im, 0, 0); return ctx.getImageData(0, 0, NC, ROWS).data; };
+  let d = read(imgs[0]); let n = 0;
+  for (let p = 0; p < NC * ROWS; p++) if (d[p * 4] > 0) n++;
+  const pix = new Int32Array(n), w = new Float32Array(n), cellOf = new Int32Array(NC * ROWS).fill(-1);
+  let k = 0;
+  for (let p = 0; p < NC * ROWS; p++) if (d[p * 4] > 0) { pix[k] = p; cellOf[p] = k; const lat = 90 - (Math.floor(p / NC) + .5) / 6; w[k] = Math.cos(lat * Math.PI / 180); k++; }
+  const sun = new Float32Array(n * 12), rain = new Float32Array(n * 12);
+  for (let q = 0; q < 8; q++) {
+    if (q) d = read(imgs[q]);
+    const arr = q < 4 ? sun : rain, m0 = (q % 4) * 3;
+    for (let c = 0; c < n; c++) {
+      const o = pix[c] * 4;
+      for (let t = 0; t < 3; t++) {
+        const code = d[o + t];
+        arr[c * 12 + m0 + t] = q < 4 ? (code - 1) * 2 : Math.pow((code - 1) / 5, 2);
+      }
+    }
+  }
+  G = { n, pix, w, sun, rain, cellOf };
+}
+function periodVals(p) {
+  if (cache[p]) return cache[p];
+  const ms = PERIODS[p], a = new Float32Array(G.n), b = new Float32Array(G.n);
+  for (let c = 0; c < G.n; c++) { let s = 0, r = 0; for (const m of ms) { s += G.sun[c * 12 + m]; r += G.rain[c * 12 + m]; } a[c] = s; b[c] = r; }
+  return (cache[p] = { a, b });
+}
+const frac = p => PERIODS[p].reduce((s, m) => s + DAYS[m], 0) / 365.25;
+function breaksFor(p, n, mode) {
+  if (mode === "custom" && S.custom && S.custom.n === n) { const f = frac(p) / frac(S.custom.p); return { sun: S.custom.sun.map(x => x * f), rain: S.custom.rain.map(x => x * f) }; }
+  if (mode === "fixed") { const f = frac(p), F = R.breaks["fixed" + n]; return { sun: F.sun.map(x => x * f), rain: F.rain.map(x => x * f) }; }
+  const key = "q" + p + n;
+  if (!cache[key]) {
+    const v = periodVals(p);
+    cache[key] = { sun: BV.quantileBreaks(v.a, G.w, n), rain: BV.quantileBreaks(v.b, G.w, n, Math.sqrt).map(x => x * x) };
+  }
+  return cache[key];
+}
+
+/* == the map == */
+const map = L.map("lmap", { minZoom: 1, maxZoom: 9, worldCopyJump: false, maxBounds: [[-80, -220], [88, 220]], zoomSnap: .5 }).setView([22, 12], 2);
+let base, labels;
+function setTiles() {
+  if (base) map.removeLayer(base); if (labels) map.removeLayer(labels);
+  const t = isDark() ? "Dark" : "Light";
+  base = L.tileLayer(`https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_${t}_Gray_Base/MapServer/tile/{z}/{y}/{x}`, { maxZoom: 16, attribution: 'Tiles &copy; Esri, HERE, Garmin, &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, and the GIS user community' }).addTo(map);
+  labels = L.tileLayer(`https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_${t}_Gray_Reference/MapServer/tile/{z}/{y}/{x}`, { maxZoom: 16, pane: "labels" }).addTo(map);
+}
+map.createPane("labels"); map.getPane("labels").style.zIndex = 450; map.getPane("labels").style.pointerEvents = "none";
+setTiles();
+const CanvasOverlay = L.ImageOverlay.extend({ _initImage: function () { const e = this._image = this._url; L.DomUtil.addClass(e, "leaflet-image-layer"); L.DomUtil.addClass(e, "bv"); if (this._zoomAnimated) L.DomUtil.addClass(e, "leaflet-zoom-animated"); e.onselectstart = L.Util.falseFn; e.onmousemove = L.Util.falseFn; } });
+const LAT_TOP = 84, LAT_BOT = -60;
+const src = document.createElement("canvas"); src.width = NC; src.height = ROWS;
+const merc = document.createElement("canvas"); const mrows = BV.mercatorRows(NC, LAT_TOP, LAT_BOT, 90, 1 / 6);
+merc.width = NC; merc.height = mrows.length;
+const overlay = new CanvasOverlay(merc, [[LAT_BOT, -180], [LAT_TOP, 180]], { opacity: .92, interactive: false }).addTo(map);
+let marker = null;
+
+function pal() { return BV.palette(S.n); }
+function render() {
+  if (!G) return;
+  const v = periodVals(S.period), br = breaksFor(S.period, S.n, S.mode), P = pal();
+  const ctx = src.getContext("2d"), img = ctx.createImageData(NC, ROWS);
+  const mask = S.twinsOn && S.dist ? S.dist.map(d => d <= S.thr ? 1 : 0) : null;
+  BV.paint(img, G.pix, v.a, v.b, br.sun, br.rain, P, { only: S.only, mask, dim: isDark() ? [60, 55, 64, 170] : [228, 224, 216, 170] });
+  ctx.putImageData(img, 0, 0);
+  BV.reproject(src, merc, mrows);
+  // shares of land per class for the legend titles
+  const n = S.n, sh = new Float64Array(n * n); let tot = 0;
+  for (let c = 0; c < G.n; c++) { const i = BV.classOf(v.a[c], br.sun), j = BV.classOf(v.b[c], br.rain); sh[i * n + j] += G.w[c]; tot += G.w[c]; }
+  S.shares = Array.from(sh, x => x / tot);
+  drawLegend(); drawSliders(v, br); legendNote(); drawScatter(); if (S.place) drawCard();
+  document.getElementById("perTitle").textContent = PNAME[S.period];
+  document.getElementById("sunUnit").textContent = S.period === "year" ? "a year" : "in " + (PERIODS[S.period].length === 1 ? "the month" : "the season");
+  document.getElementById("rainUnit").textContent = document.getElementById("sunUnit").textContent;
+  const t = document.getElementById("shareNote");
+  t.textContent = S.twinsOn && S.dist ? `Showing places within ${S.thr.toFixed(2)} of ${S.place.name}: ${pc(twinShare(), 1)} of land.` : (S.mode === "quant" ? "Equal land: each band holds the same share of land on each axis." : S.mode === "fixed" ? "Fixed breaks, scaled to the length of the period." : "Your own breaks. Choose Equal land or Fixed to reset.");
+}
+let legendObj = null;
+function drawLegend() {
+  const P = pal();
+  legendObj = BV.legend(document.getElementById("legend"), S.n, P, {
+    share: (i, j) => pc(S.shares[i * S.n + j], 1) + " of land",
+    onHover: (i, j) => { S.only = i === null || i === undefined ? null : [i, j]; renderSoon(); legendNote(); }
+  });
+  if (S.only) legendObj.mark(S.only[0], S.only[1]);
+}
+function legendNote() {
+  const e = document.getElementById("legendNote");
+  if (S.only) { const [i, j] = S.only; e.innerHTML = `<b>${BV.classWords(i, j, S.n)}</b>: ${pc(S.shares[i * S.n + j], 1)} of land, ${S.period === "year" ? "whole year" : PNAME[S.period]}.`; }
+  else e.textContent = "Hover over a square to isolate a class; click to pin it.";
+}
+let rq = 0;
+function renderSoon() { cancelAnimationFrame(rq); rq = requestAnimationFrame(renderMapOnly); }
+function renderMapOnly() {
+  const v = periodVals(S.period), br = breaksFor(S.period, S.n, S.mode), P = pal();
+  const ctx = src.getContext("2d"), img = ctx.createImageData(NC, ROWS);
+  const mask = S.twinsOn && S.dist ? S.dist.map(d => d <= S.thr ? 1 : 0) : null;
+  BV.paint(img, G.pix, v.a, v.b, br.sun, br.rain, P, { only: S.only, mask, dim: isDark() ? [60, 55, 64, 170] : [228, 224, 216, 170] });
+  ctx.putImageData(img, 0, 0); BV.reproject(src, merc, mrows);
+}
+let sliders = {};
+function hist(vals, lo, hi, nb, tf, inv) {
+  const t0 = tf(lo), t1 = tf(hi), h = new Float64Array(nb); let tot = 0;
+  for (let c = 0; c < G.n; c++) { const t = (tf(Math.min(Math.max(vals[c], lo), hi)) - t0) / (t1 - t0); h[Math.min(nb - 1, Math.floor(t * nb))] += G.w[c]; tot += G.w[c]; }
+  return Array.from(h, (x, k) => ({ x0: inv(t0 + k / nb * (t1 - t0)), x1: inv(t0 + (k + 1) / nb * (t1 - t0)), w: x / tot }));
+}
+function drawSliders(v, br) {
+  const key = S.period + S.n + S.mode, P = pal();
+  const f = frac(S.period);
+  const sMax = S.period === "year" ? 4200 : Math.ceil(450 * PERIODS[S.period].length / 50) * 50;
+  const rMax = S.period === "year" ? 5000 : (PERIODS[S.period].length === 1 ? 800 : 2000);
+  const colsS = P.map(r => r[0].hex), colsR = P[0].map(c => c.hex);
+  const nice = (x, step) => Math.round(x / step) * step;
+  const sTicks = S.period === "year" ? [0, 1000, 2000, 3000, 4000] : (PERIODS[S.period].length === 1 ? [0, 100, 200, 300, 400] : [0, 300, 600, 900, 1200]);
+  const rTicks = S.period === "year" ? [0, 100, 500, 1000, 2000, 5000] : (PERIODS[S.period].length === 1 ? [0, 25, 100, 200, 400, 800] : [0, 50, 200, 500, 1000, 2000]);
+  if (sliders.key === key && S.mode !== "custom") { sliders.s.set(br.sun, colsS); sliders.r.set(br.rain, colsR); return; }
+  if (sliders.key === key) return;
+  sliders.key = key;
+  const onCh = axis => (b, done) => {
+    const cur = breaksFor(S.period, S.n, S.mode);
+    S.custom = { n: S.n, p: S.period, sun: axis === "sun" ? b : cur.sun.slice(), rain: axis === "rain" ? b : cur.rain.slice() };
+    if (S.mode !== "custom") { S.mode = "custom"; setPressed("modeSeg", "m", "custom"); document.querySelector('#modeSeg [data-m="custom"]').disabled = false; sliders.key = S.period + S.n + "custom"; }
+    if (done) render(); else renderSoon();
+  };
+  sliders.s = BV.breakSlider(document.getElementById("sunSlider"), { hist: hist(v.a, 0, sMax, 84, x => x, x => x), breaks: br.sun, colors: colsS, min: 0, max: sMax, ticks: sTicks, label: "Sunshine", fmt: (x, t) => fmt(x) + (t ? "" : " h"), onChange: onCh("sun"), round: x => nice(x, S.period === "year" ? 10 : 1) });
+  sliders.r = BV.breakSlider(document.getElementById("rainSlider"), { hist: hist(v.b, 0, rMax, 84, Math.sqrt, x => x * x), breaks: br.rain, colors: colsR, min: 0, max: rMax, scale: "sqrt", ticks: rTicks, label: "Rain", fmt: (x, t) => fmt(x) + (t ? "" : " mm"), onChange: onCh("rain"), round: x => nice(x, x < 100 ? 1 : 5) });
+}
+function setPressed(id, attr, val) { document.querySelectorAll(`#${id} .btn`).forEach(b => b.setAttribute("aria-pressed", b.dataset[attr] === String(val) ? "true" : "false")); }
+document.querySelectorAll("#perSeg .btn").forEach(b => b.onclick = () => { S.period = b.dataset.p; setPressed("perSeg", "p", S.period); document.getElementById("monthSel").value = ""; render(); });
+const msel = document.getElementById("monthSel");
+MONLONG.forEach((m, k) => { const o = document.createElement("option"); o.value = "m" + k; o.textContent = m; msel.appendChild(o); });
+msel.onchange = () => { if (!msel.value) return; S.period = msel.value; setPressed("perSeg", "p", "none"); render(); };
+document.querySelectorAll("#nSeg .btn").forEach(b => b.onclick = () => { S.n = +b.dataset.n; S.only = null; if (S.mode === "custom") { S.mode = "quant"; setPressed("modeSeg", "m", "quant"); } setPressed("nSeg", "n", S.n); render(); });
+document.querySelectorAll("#modeSeg .btn").forEach(b => b.onclick = () => { if (b.disabled) return; S.mode = b.dataset.m; setPressed("modeSeg", "m", S.mode); sliders.key = null; render(); });
+
+function cellAt(latlng) {
+  const lat = latlng.lat, lng = ((latlng.lng + 540) % 360) - 180;
+  if (lat > 90 || lat < -60) return -1;
+  const r = Math.floor((90 - lat) * 6), c = Math.floor((lng + 180) * 6);
+  if (r < 0 || r >= ROWS) return -1;
+  return G.cellOf[r * NC + Math.min(NC - 1, c)];
+}
+function cellLatLon(k) { const p = G.pix[k]; return [90 - (Math.floor(p / NC) + .5) / 6, -180 + (p % NC + .5) / 6]; }
+map.on("mousemove", e => {
+  if (!G) return; const k = cellAt(e.latlng);
+  if (k < 0) { hideTip(); return; }
+  const v = periodVals(S.period), br = breaksFor(S.period, S.n, S.mode), i = BV.classOf(v.a[k], br.sun), j = BV.classOf(v.b[k], br.rain), P = pal();
+  const r = map.getContainer().getBoundingClientRect();
+  showTip(`<i style="background:${P[i][j].hex}"></i><b>${BV.classWords(i, j, S.n)}</b><br>${PNAME[S.period]}: about ${fmt(v.a[k])} h of sun, ${fmt(v.b[k])} mm of rain${S.dist ? `<br>Likeness to ${esc(S.place.name)}: ${S.dist[k].toFixed(2)}` : ""}`, r.left + e.containerPoint.x, r.top + e.containerPoint.y - 6);
+});
+map.on("mouseout", hideTip);
+map.on("click", e => { if (!G) return; const k = cellAt(e.latlng); if (k < 0) return; const ll = cellLatLon(k); selectPlace({ name: `${Math.abs(ll[0]).toFixed(2)}°${ll[0] >= 0 ? "N" : "S"}, ${Math.abs(ll[1]).toFixed(2)}°${ll[1] >= 0 ? "E" : "W"}`, cc: "", country: "", lat: ll[0], lon: ll[1], pop: 0, k, spot: true, near: nearestCity(ll[0], ll[1]) }, false); });
+
+/* == places == */
+function nearestCity(lat, lon) {
+  if (!CITIES) return null; let best = null, bd = 1e9; const cl = Math.cos(lat * Math.PI / 180);
+  for (const c of CITIES) { const d = (c.lat - lat) ** 2 + ((c.lon - lon) * cl) ** 2; if (d < bd) { bd = d; best = c; } }
+  return best ? { c: best, km: Math.sqrt(bd) * 111.2 } : null;
+}
+const fold = s => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+async function loadCities() {
+  const j = await (await fetch("data/cities_page.json")).json();
+  CITIES = j.rows.map(r => ({ name: r[0], cc: r[1], lat: r[2], lon: r[3], pop: r[4], gc: r[5], sun_h: r[6], rain_mm: r[7], country: j.countries[r[1]] || r[1], f: fold(r[0]) }));
+  CITIES.forEach(c => c.k = G ? G.cellOf[c.gc] : -1);
+}
+const q = document.getElementById("q"), sug = document.getElementById("sug"); let sel = -1, opts = [];
+q.addEventListener("input", () => {
+  const t = fold(q.value.trim()); sel = -1;
+  if (!CITIES || t.length < 2) { sug.style.display = "none"; return; }
+  const a = [], b = [];
+  for (const c of CITIES) { if (c.f.startsWith(t)) a.push(c); else if (t.length > 2 && c.f.includes(t)) b.push(c); if (a.length > 12) break; }
+  opts = a.concat(b).slice(0, 12);
+  sug.innerHTML = opts.map((c, k) => `<li role="option" data-k="${k}">${esc(c.name)} <span>${esc(c.country)} · ${fmt(c.pop)}</span></li>`).join("");
+  sug.style.display = opts.length ? "block" : "none";
+});
+q.addEventListener("keydown", e => {
+  if (e.key === "ArrowDown" || e.key === "ArrowUp") { sel = Math.max(0, Math.min(opts.length - 1, sel + (e.key === "ArrowDown" ? 1 : -1))); [...sug.children].forEach((li, k) => li.setAttribute("aria-selected", k === sel)); e.preventDefault(); }
+  if (e.key === "Enter" && opts.length) { pick(opts[Math.max(0, sel)]); e.preventDefault(); }
+  if (e.key === "Escape") sug.style.display = "none";
+});
+sug.addEventListener("click", e => { const li = e.target.closest("li"); if (li) pick(opts[+li.dataset.k]); });
+function pick(c) { sug.style.display = "none"; q.value = c.name; selectPlace(c, true); }
+function findCity(name, cc) { return CITIES && CITIES.find(c => c.name === name && (!cc || c.cc === cc || c.country === cc)); }
+function selectPlace(c, fly) {
+  if (!G) return;
+  if (c.k === undefined || c.k < 0) c.k = G.cellOf[c.gc];
+  S.place = c; S.dist = null;
+  if (marker) map.removeLayer(marker);
+  marker = L.circleMarker([c.lat, c.lon], { radius: 7, color: "#211C24", weight: 2, fillColor: "#fff", fillOpacity: 1 }).addTo(map);
+  if (fly) map.setView([c.lat, c.lon], Math.max(map.getZoom(), 4));
+  S.dist = BV.distance(Array.from({ length: 12 }, (_, m) => G.sun[c.k * 12 + m]), Array.from({ length: 12 }, (_, m) => G.rain[c.k * 12 + m]), G.sun, G.rain, G.n, [R.similar.sd_sun, R.similar.sd_rootrain], S.flip);
+  drawCard(); render();
+}
+function twinShare() { let a = 0, t = 0; for (let c = 0; c < G.n; c++) { t += G.w[c]; if (S.dist[c] <= S.thr) a += G.w[c]; } return a / t; }
+function pctLand(vals, x) { let a = 0, t = 0; for (let c = 0; c < G.n; c++) { t += G.w[c]; if (vals[c] < x) a += G.w[c]; } return a / t; }
+function monthChart(host, sun, rain, opt) {
+  opt = opt || {};
+  resp(host, (W, narrow) => {
+    const H = opt.h || 200, ml = 34, mr = 40, mt = opt.small ? 10 : 24, mb = 24, iw = W - ml - mr, ih = H - mt - mb;
+    const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": opt.aria || "Monthly sunshine and rain" }, host);
+    const sMax = opt.sMax || Math.max(100, Math.ceil(Math.max(...sun) / 100) * 100), rMax = opt.rMax || Math.max(50, Math.ceil(Math.max(...rain) / 50) * 50);
+    const bw = iw / 12;
+    for (let t = 0; t <= 4; t++) { const y = mt + ih - t / 4 * ih; el("line", { x1: ml, x2: ml + iw, y1: y, y2: y, stroke: "var(--rule)" }, svg); lbl(svg, ml - 5, y + 4, fmt(t / 4 * sMax), "lab s m", "end"); lbl(svg, ml + iw + 5, y + 4, fmt(t / 4 * rMax), "lab s m"); }
+    rain.forEach((r, m) => el("rect", { x: ml + m * bw + bw * .18, y: mt + ih - r / rMax * ih, width: bw * .64, height: r / rMax * ih, fill: "var(--cool)", opacity: .7 }, svg));
+    el("path", { d: sun.map((s, m) => (m ? "L" : "M") + (ml + (m + .5) * bw).toFixed(1) + " " + (mt + ih - s / sMax * ih).toFixed(1)).join(""), fill: "none", stroke: "var(--hot)", "stroke-width": 2.6 }, svg);
+    sun.forEach((s, m) => el("circle", { cx: ml + (m + .5) * bw, cy: mt + ih - s / sMax * ih, r: 2.6, fill: "var(--hot)" }, svg));
+    MON.forEach((m, k) => lbl(svg, ml + (k + .5) * bw, H - 6, narrow && k % 2 ? "" : m.slice(0, narrow ? 1 : 3), "lab s m", "middle"));
+    if (!opt.small) { lbl(svg, ml - 5, 10, "sun, hours", "lab s m", "start").setAttribute("x", 0); lbl(svg, W, 10, "rain, mm", "lab s m", "end"); }
+    // hover per month
+    for (let m = 0; m < 12; m++) {
+      const r = el("rect", { x: ml + m * bw, y: mt, width: bw, height: ih, fill: "transparent" }, svg);
+      r.addEventListener("pointerenter", () => { const b = r.getBoundingClientRect(); showTip(`<b>${MONLONG[m]}</b><br>${fmt(sun[m])} h of sun · ${fmt(rain[m])} mm of rain`, b.left + b.width / 2, b.top + 10); });
+      r.addEventListener("pointerleave", hideTip);
+    }
+  });
+}
+function drawCard() {
+  const c = S.place, card = document.getElementById("card"), k = c.k;
+  const sun = Array.from({ length: 12 }, (_, m) => G.sun[k * 12 + m]), rain = Array.from({ length: 12 }, (_, m) => G.rain[k * 12 + m]);
+  const sy = c.spot ? sun.reduce((a, b) => a + b) : c.sun_h, ry = c.spot ? rain.reduce((a, b) => a + b) : c.rain_mm;
+  const ya = periodVals("year"), br = breaksFor("year", S.n, S.mode === "custom" ? "quant" : S.mode), P = pal();
+  const i = BV.classOf(sy, br.sun), j = BV.classOf(ry, br.rain);
+  const ps = pctLand(ya.a, sy), pr = pctLand(ya.b, ry);
+  const smax = sun.indexOf(Math.max(...sun)), rmax = rain.indexOf(Math.max(...rain));
+  const title = c.spot ? `This spot, ${c.name}` : `${esc(c.name)}, ${esc(c.country)}`;
+  const sub = c.spot ? (c.near ? `Nearest place in the list: ${esc(c.near.c.name)}, ${esc(c.near.c.country)}, ${fmt(c.near.km)} km away.` : "") : `${fmt(c.pop)} people (GeoNames). Climate of the nearest grid cell, 1961 to 1990.`;
+  card.innerHTML = `<div class="big">${title}</div><p class="sub">${sub}</p>
+   <span class="chip"><i style="background:${P[i][j].hex}"></i>${BV.classWords(i, j, S.n)} for the year (${S.mode === "fixed" ? "fixed" : "equal land"} breaks)</span>
+   <div class="nums"><div><b>${fmt(sy)}</b><span>hours of sunshine a year${c.spot ? " (about)" : ""}; sunnier than ${pc(ps)} of land</span></div>
+   <div><b>${fmt(ry)}</b><span>mm of rain a year${c.spot ? " (about)" : ""}; wetter than ${pc(pr)} of land</span></div>
+   <div><b>${MON[smax]} · ${MON[rmax]}</b><span>sunniest month · wettest month</span></div></div>
+   <div class="chart" id="cardChart"></div>
+   <div class="twin"><h3 style="margin:4px 0">Places like this</h3>
+   <div class="controls"><button class="btn" id="twinBtn" aria-pressed="${S.twinsOn}">Show them on the map</button>
+   <label class="ctl-l" for="thr">Strictness</label><input type="range" id="thr" min="0.15" max="1.2" step="0.05" value="${S.thr}" aria-label="How similar, lower is stricter"><span class="ctl-l" id="thrV">${S.thr.toFixed(2)}</span>
+   <label class="ctl-l"><input type="checkbox" id="flip" ${S.flip ? "checked" : ""}> allow the other hemisphere</label></div>
+   <p class="src" id="twinShare"></p><ol id="twins"></ol></div>`;
+  monthChart(document.getElementById("cardChart"), sun, rain, { aria: "Monthly sunshine and rain for " + c.name });
+  document.getElementById("twinBtn").onclick = () => { S.twinsOn = !S.twinsOn; if (S.twinsOn) map.setView([20, 10], 2); document.getElementById("twinBtn").setAttribute("aria-pressed", S.twinsOn); renderMapOnly(); render(); };
+  const thr = document.getElementById("thr");
+  thr.oninput = () => { S.thr = +thr.value; document.getElementById("thrV").textContent = S.thr.toFixed(2); twinList(); if (S.twinsOn) renderSoon(); };
+  thr.onchange = () => { if (S.twinsOn) render(); };
+  document.getElementById("flip").onchange = e => { S.flip = e.target.checked; selectPlace(S.place, false); };
+  twinList();
+}
+function twinList() {
+  const c = S.place, ol = document.getElementById("twins");
+  document.getElementById("twinShare").textContent = `${pc(twinShare(), 1)} of the world's land is within ${S.thr.toFixed(2)} of ${c.spot ? "this spot" : c.name}. Nearest big places (100,000 people or more), one per country:`;
+  if (!CITIES) { ol.innerHTML = ""; return; }
+  const own = c.cc || (c.near && c.near.c.cc);
+  const cand = CITIES.filter(x => x.pop >= 100000 && x.cc !== own && x.k >= 0).map(x => [x, S.dist[x.k]]).sort((a, b) => a[1] - b[1]);
+  const seen = new Set(), out = [];
+  for (const [x, d] of cand) { if (seen.has(x.cc)) continue; seen.add(x.cc); out.push([x, d]); if (out.length >= 8) break; }
+  ol.innerHTML = out.map(([x, d], k) => `<li data-k="${k}"><span><b>${esc(x.name)}</b>, ${esc(x.country)}</span><span>${d.toFixed(2)}${d > S.thr ? " (outside)" : ""}</span></li>`).join("");
+  [...ol.children].forEach((li, k) => li.onclick = () => { q.value = out[k][0].name; selectPlace(out[k][0], true); });
+}
+
+/* == corners == */
+function cityLink(r) { return `<a data-n="${esc(r.name)}" data-c="${esc(r.cc)}">${esc(r.name)}</a>`; }
+(function () {
+  const P = BV.palette(3), host = document.getElementById("corners");
+  const C = [
+    ["sunny_dry", 2, 0, "Sunny and dry", "The deserts and their edges: the Sahara, Arabia, Iran, the Sonoran, inland Australia. The biggest corner by far.", R.big.q_sunny_dry],
+    ["sunny_wet", 2, 2, "Sunny and wet", "The rare corner: mostly the savannas and highlands of Africa, northern Australia and inland Brazil, where a short, heavy rainy season sits in a long bright year. Among big cities, Java and Cuba too.", R.big.q_sunny_wet],
+    ["dull_dry", 0, 0, "Dull and dry", "The strangest corner: mostly the far north of Canada, Alaska and Siberia, where dark winters and cold air keep both low. And the desert coast of Peru, where a cold sea makes cloud but almost no rain.", R.big.q_dull_dry],
+    ["dull_wet", 0, 2, "Dull and wet", "The Amazon and Congo basins, southern China, eastern Canada and the north-west edge of Europe, Britain included.", R.big.q_dull_wet]];
+  host.innerHTML = C.map(([k, i, j, t, d, rows]) => `<div class="card" style="border-left-color:${P[i][j].hex}"><b>${t}</b><div class="big">${pc(R.corners_q[k], 1)} <span>of land · ${pc(R.corners_q_pop[k], 1)} of city people</span></div><p style="margin:6px 0">${d}</p><p style="margin:0">Big cities (${rows.length}): ${rows.slice(0, 5).map(cityLink).join(", ")}</p></div>`).join("");
+  host.addEventListener("click", e => { const a = e.target.closest("a[data-n]"); if (!a) return; const c = findCity(a.dataset.n, a.dataset.c); if (c) { q.value = c.name; selectPlace(c, true); document.getElementById("q").scrollIntoView({ behavior: "smooth", block: "center" }); } });
+})();
+
+/* == scatter of big cities == */
+const scatterHost = document.getElementById("scatter");
+let scatterReady = false;
+function drawScatter() {
+  if (!G) return;
+  if (!scatterReady) { scatterReady = true; resp(scatterHost, scatterRender); } else scatterRender(Math.max(280, Math.round(scatterHost.clientWidth)), scatterHost.clientWidth < 560, true);
+}
+function scatterRender(W, narrow, re) {
+  if (re) scatterHost.innerHTML = "";
+  const H = narrow ? 420 : 500, ml = 52, mr = 14, mt = 14, mb = 44, iw = W - ml - mr, ih = H - mt - mb;
+  const x0 = 900, x1 = 4000, y0 = Math.log10(10), y1 = Math.log10(5000);
+  const X = v => ml + (Math.min(Math.max(v, x0), x1) - x0) / (x1 - x0) * iw, Y = v => mt + ih - (Math.log10(Math.min(Math.max(v, 10), 5000)) - y0) / (y1 - y0) * ih;
+  const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": "Scatter of big cities by sunshine and rain" }, scatterHost);
+  const br = breaksFor("year", S.n, S.mode), P = pal();
+  const xs = [x0].concat(br.sun, [x1]), ys = [10].concat(br.rain, [5000]);
+  for (let i = 0; i < S.n; i++) for (let j = 0; j < S.n; j++) {
+    const a = X(xs[i]), b = X(xs[i + 1]), c = Y(ys[j + 1]), d = Y(ys[j]);
+    if (b > a && d > c) el("rect", { x: a, y: c, width: b - a, height: d - c, fill: P[i][j].hex, opacity: .28 }, svg);
+  }
+  [1000, 1500, 2000, 2500, 3000, 3500, 4000].forEach(t => { el("line", { x1: X(t), x2: X(t), y1: mt, y2: mt + ih, stroke: "var(--rule)" }, svg); lbl(svg, X(t), mt + ih + 16, narrow && t % 1000 ? "" : fmt(t), "lab s m", "middle"); });
+  [10, 30, 100, 300, 1000, 3000].forEach(t => { el("line", { x1: ml, x2: ml + iw, y1: Y(t), y2: Y(t), stroke: "var(--rule)" }, svg); lbl(svg, ml - 6, Y(t) + 4, fmt(t), "lab s m", "end"); });
+  lbl(svg, ml + iw / 2, H - 6, "hours of sunshine a year", "lab m", "middle");
+  const yl = lbl(svg, 0, 0, "mm of rain a year", "lab m", "middle"); yl.setAttribute("transform", `translate(12 ${mt + ih / 2}) rotate(-90)`);
+  const rows = R.big.rows.slice().sort((a, b) => (a[1] === "GB") - (b[1] === "GB"));
+  rows.forEach(r => {
+    const i = BV.classOf(r[3], br.sun), j = BV.classOf(r[4], br.rain), uk = r[1] === "GB";
+    const c = el("circle", { cx: X(r[3]), cy: Y(r[4]), r: Math.max(2.6, Math.min(9, Math.sqrt(r[2] / 1e6) * 1.9)), fill: P[i][j].hex, stroke: uk ? "var(--fg)" : "var(--muted)", "stroke-width": uk ? 2 : .5 }, svg);
+    c.style.cursor = "pointer";
+    c.addEventListener("pointerenter", () => { const b = c.getBoundingClientRect(); showTip(`<b>${esc(r[0])}</b>, ${esc(R.big_cc[r[1]] || r[1])}<br>${fmt(r[3])} h of sun · ${fmt(r[4])} mm of rain<br>${BV.classWords(i, j, S.n)}`, b.left + b.width / 2, b.top); });
+    c.addEventListener("pointerleave", hideTip);
+    c.addEventListener("click", e => { e.stopPropagation(); const cc = findCity(r[0], r[1]); if (cc) { q.value = cc.name; selectPlace(cc, true); } });
+  });
+  [["London", "GB", 1], ["Lima", "PE", 0], ["Phoenix", "US", 0], ["Chongqing", "CN", -1], ["Surabaya", "ID", 0], ["Conakry", "GN", 0], ["Cairo", "EG", 0], ["Singapore", "SG", -1], ["Guayaquil", "EC", 1]].filter(x => !narrow || ["London", "Lima", "Phoenix", "Cairo", "Surabaya"].includes(x[0])).forEach(([n, cc, dy]) => {
+    const r = R.big.rows.find(x => x[0] === n && x[1] === cc); if (!r) return;
+    const t = lbl(svg, X(r[3]) + 9, Y(r[4]) + 4 + dy * 13, n, "lab b"); if (X(r[3]) > ml + iw - 80) { t.setAttribute("text-anchor", "end"); t.setAttribute("x", X(r[3]) - 9); }
+  });
+}
+
+/* == UK strip == */
+resp(document.getElementById("ukstrip"), (W, narrow) => {
+  const H = 226, ml = 10, mr = 10, mt = 58, mb = 50, iw = W - ml - mr, ih = H - mt - mb, host = document.getElementById("ukstrip");
+  const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": "World land by annual sunshine with UK cities marked" }, host);
+  const e = R.hist.sun_edges, h = R.hist.sun, X = v => ml + v / 4200 * iw, hm = Math.max(...h);
+  const P = BV.palette(3), b = R.breaks.quant3.sun;
+  h.forEach((v, k) => { const c = BV.classOf((e[k] + e[k + 1]) / 2, b); el("rect", { x: X(e[k]), y: mt + ih - v / hm * ih, width: X(e[k + 1]) - X(e[k]) - .6, height: v / hm * ih, fill: P[c][0].hex, stroke: "var(--border)", "stroke-width": .4 }, svg); });
+  el("line", { x1: ml, x2: ml + iw, y1: mt + ih, y2: mt + ih, stroke: "var(--muted)" }, svg);
+  [0, 1000, 2000, 3000, 4000].forEach(t => lbl(svg, X(t), mt + ih + 16, fmt(t) + (t === 4000 ? " h" : ""), "lab s m", "middle"));
+  R.uk_cities.forEach(c => el("line", { x1: X(c.sun_h), x2: X(c.sun_h), y1: mt - 6, y2: mt + ih, stroke: "var(--deep)", "stroke-width": 1, opacity: .55 }, svg));
+  const lab = [[R.uk.dullest_city.name, R.uk.dullest_city.sun_h, 0], ["London", R.london.sun, 1], [R.uk.sunniest_city.name, R.uk.sunniest_city.sun_h, 2]];
+  lab.forEach(([n, v, k]) => { el("line", { x1: X(v), x2: X(v), y1: mt - 8 - k * 14, y2: mt, stroke: "var(--fg)" }, svg); lbl(svg, X(v) + (k === 0 ? -4 : 4), mt - 10 - k * 14, `${n} ${fmt(v)}`, "lab s b", k === 0 ? "end" : "start"); });
+  el("line", { x1: X(R.sun.median), x2: X(R.sun.median), y1: mt, y2: mt + ih + 22, stroke: "var(--fg)", "stroke-dasharray": "3 3" }, svg);
+  lbl(svg, X(R.sun.median) + 4, mt + ih + 34, "world median, " + fmt(R.sun.median) + " h", "lab s b");
+});
+
+/* == rankings == */
+const RK = { k: "sunniest", g: "cities" };
+function drawRank() {
+  const t = document.getElementById("rank"), P = BV.palette(3), b = R.breaks.quant3;
+  const sw = (s, r) => { const i = BV.classOf(s, b.sun), j = BV.classOf(r, b.rain); return `<i class="sw" style="background:${P[i][j].hex}"></i>`; };
+  if (RK.g === "cities") {
+    const rows = R.big[RK.k];
+    t.innerHTML = `<thead><tr><th>#</th><th>City</th><th class="num">Sun, h</th><th class="num">Rain, mm</th><th class="num wide">People</th></tr></thead><tbody>` +
+      rows.map((r, k) => `<tr class="go" data-k="${k}"><td>${k + 1}</td><td>${sw(r.sun_h, r.rain_mm)}<b>${esc(r.name)}</b><small>${esc(r.country)}</small></td><td class="num">${fmt(r.sun_h)}</td><td class="num">${fmt(r.rain_mm)}</td><td class="num wide">${fmt(r.pop)}</td></tr>`).join("") + "</tbody>";
+    [...t.querySelectorAll("tr.go")].forEach(tr => tr.onclick = () => { const r = rows[+tr.dataset.k], c = findCity(r.name, r.cc); if (c) { q.value = c.name; selectPlace(c, true); document.getElementById("q").scrollIntoView({ behavior: "smooth", block: "center" }); } });
+  } else {
+    const rows = R.countries[RK.k];
+    t.innerHTML = `<thead><tr><th>#</th><th>Country</th><th class="num">Sun, h</th><th class="num">Rain, mm</th></tr></thead><tbody>` +
+      rows.map((r, k) => `<tr><td>${k + 1}</td><td>${sw(r.sun_h, r.rain_mm)}<b>${esc(r.country)}</b></td><td class="num">${fmt(r.sun_h)}</td><td class="num">${fmt(r.rain_mm)}</td></tr>`).join("") + "</tbody>";
+  }
+}
+document.querySelectorAll("#rankSeg .btn").forEach(b => b.onclick = () => { if (b.dataset.k) { RK.k = b.dataset.k; document.querySelectorAll("#rankSeg [data-k]").forEach(x => x.setAttribute("aria-pressed", x === b)); } else { RK.g = b.dataset.g; document.querySelectorAll("#rankSeg [data-g]").forEach(x => x.setAttribute("aria-pressed", x === b)); } drawRank(); });
+drawRank();
+
+/* == seasons == */
+(function () {
+  const host = document.getElementById("multiples");
+  ["London", "Mumbai", "Lima", "Cairo", "Singapore", "Kolkata"].forEach(n => {
+    const p = R.profiles[n], d = document.createElement("div"); d.className = "m";
+    d.innerHTML = `<h5>${n}</h5><p>${fmt(p.sun_h)} h · ${fmt(p.rain_mm)} mm a year</p><div class="chart"></div>`;
+    host.appendChild(d);
+    monthChart(d.querySelector(".chart"), p.sun, p.rain, { h: 150, sMax: 400, rMax: 1000, small: true, aria: "Monthly sunshine and rain in " + n });
+  });
+})();
+
+document.getElementById("theme").onclick = () => { const r = document.documentElement; r.dataset.theme = isDark() ? "light" : "dark"; setTiles(); redraws.forEach(f => f()); render(); };
+
+(async function () {
+  try { await loadGrid(); } catch (e) { document.getElementById("loading").textContent = "The climate grids could not be loaded."; return; }
+  document.getElementById("loading").remove();
+  render();
+  try { await loadCities(); } catch (e) { document.getElementById("card").innerHTML = '<p class="sub">The place list could not be loaded; click the map instead.</p>'; return; }
+  const h = decodeURIComponent(location.hash.slice(1));
+  const start = (h && CITIES.find(c => c.f === fold(h))) || findCity("London", "GB");
+  q.value = start.name; selectPlace(start, false);
+})();
+</script>
+</body>
+</html>
