@@ -1,0 +1,24 @@
+cff-version: 1.2.0
+message: "If you use this data or code, please cite it as below."
+title: "Sun and Rain: The World's Sunshine Against Its Rainfall. A Bivariate Reading of the CRU CL 2.0 Climatology, 1961 to 1990"
+type: dataset
+authors:
+  - family-names: Hotham
+    given-names: Tristan
+    orcid: "https://orcid.org/0000-0003-4931-9349"
+    affiliation: "Independent researcher"
+doi: "10.5281/zenodo.23732580"
+url: "https://maps.tristanhotham.com/sun-and-rain/"
+repository-code: "https://github.com/Tristan-Hotham/sun-and-rain"
+license: CC-BY-4.0
+keywords:
+  - "sunshine duration"
+  - "precipitation"
+  - "bivariate map"
+  - "climatology"
+  - "CRU CL 2.0"
+  - "WorldClim"
+  - "climate classification"
+  - "data visualisation"
+  - "weather twins"
+  - "United Kingdom"
